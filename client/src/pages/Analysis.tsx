@@ -92,7 +92,8 @@ export default function Analysis() {
           </div>
         ) : data ? (
           <AnalysisResults 
-            negotiationPoints={data.negotiationPoints as NegotiationPoint[]} 
+            negotiationPoints={data.negotiationPoints as NegotiationPoint[]}
+            documentId={documentId as number}
             onEmailReport={sendReportByEmail}
             onDownloadPdf={downloadPdf}
           />
