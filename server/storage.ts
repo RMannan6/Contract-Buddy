@@ -109,7 +109,10 @@ export class MemStorage implements IStorage {
 
   async deleteExpiredDocuments(): Promise<void> {
     const now = new Date();
-    for (const [id, document] of this.documents.entries()) {
+    // Convert to array first to avoid iterator issues
+    const documents = Array.from(this.documents.entries());
+    
+    for (const [id, document] of documents) {
       if (new Date(document.expiresAt) <= now) {
         this.documents.delete(id);
         

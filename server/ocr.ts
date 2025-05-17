@@ -1,11 +1,10 @@
-import Tesseract from "tesseract.js";
-import { createWorker } from "tesseract.js";
 import mammoth from "mammoth";
 import { Clause } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 import OpenAI from "openai";
+import * as pdfjs from "pdfjs-dist";
 
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -49,9 +48,9 @@ export async function fileUploadHandler(file: Express.Multer.File): Promise<File
       text: extractedText,
       clauses
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error processing file:", error);
-    throw new Error(`Failed to process file: ${error.message}`);
+    throw new Error(`Failed to process file: ${error?.message || 'Unknown error'}`);
   }
 }
 
@@ -210,7 +209,8 @@ async function extractClauses(text: string): Promise<{ content: string, type?: s
     });
     
     // Parse the response
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    const result = JSON.parse(content ? content : "{}");
     
     if (result.clauses && Array.isArray(result.clauses)) {
       return result.clauses;
@@ -218,7 +218,7 @@ async function extractClauses(text: string): Promise<{ content: string, type?: s
     
     // Fallback if the expected format isn't returned
     return splitIntoDefaultClauses(text);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error extracting clauses:", error);
     // Fallback to a simpler method if OpenAI fails
     return splitIntoDefaultClauses(text);
