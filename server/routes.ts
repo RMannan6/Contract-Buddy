@@ -200,6 +200,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error retrieving analysis" });
     }
   });
+  
+  // Get a revised contract with all suggested improvements implemented
+  app.get("/api/document/:documentId/revised", async (req: Request, res: Response) => {
+    try {
+      const { generateRevisedContract } = await import("./contractGenerator");
+      const documentId = parseInt(req.params.documentId);
+      
+      if (isNaN(documentId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+      
+      // Get the document
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Get the analysis results
+      const analysisResult = await storage.getAnalysisResultByDocumentId(documentId);
+      if (!analysisResult) {
+        return res.status(404).json({ message: "Analysis results not found" });
+      }
+      
+      // Get all clauses from the document
+      const clauses = await storage.getClausesByDocumentId(documentId);
+      
+      // Generate the revised contract
+      const revisedContract = generateRevisedContract(
+        document.content,
+        analysisResult.negotiationPoints as any,
+        clauses
+      );
+      
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename="revised_contract_${documentId}.txt"`);
+      res.send(revisedContract);
+    } catch (error: any) {
+      console.error("Error generating revised contract:", error);
+      res.status(500).json({ message: error.message || "Failed to generate revised contract" });
+    }
+  });
+  
+  // Get a revised contract with tracked changes (showing original and suggested side by side)
+  app.get("/api/document/:documentId/revised-with-changes", async (req: Request, res: Response) => {
+    try {
+      const { generateRevisedContractWithChanges } = await import("./contractGenerator");
+      const documentId = parseInt(req.params.documentId);
+      
+      if (isNaN(documentId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+      
+      // Get the document
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Get the analysis results
+      const analysisResult = await storage.getAnalysisResultByDocumentId(documentId);
+      if (!analysisResult) {
+        return res.status(404).json({ message: "Analysis results not found" });
+      }
+      
+      // Get all clauses from the document
+      const clauses = await storage.getClausesByDocumentId(documentId);
+      
+      // Generate the revised contract with tracked changes
+      const revisedContract = generateRevisedContractWithChanges(
+        document.content,
+        analysisResult.negotiationPoints as any,
+        clauses
+      );
+      
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename="revised_contract_with_changes_${documentId}.txt"`);
+      res.send(revisedContract);
+    } catch (error: any) {
+      console.error("Error generating revised contract with changes:", error);
+      res.status(500).json({ message: error.message || "Failed to generate revised contract with changes" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

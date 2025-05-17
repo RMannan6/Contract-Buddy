@@ -8,18 +8,40 @@ import { NegotiationPoint } from "@shared/schema";
 
 interface AnalysisResultsProps {
   negotiationPoints: NegotiationPoint[];
+  documentId: number;
   onEmailReport: (email: string) => void;
   onDownloadPdf: () => void;
 }
 
 export default function AnalysisResults({ 
   negotiationPoints, 
+  documentId,
   onEmailReport, 
   onDownloadPdf 
 }: AnalysisResultsProps) {
   const { toast } = useToast();
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
+  
+  // Function to download a revised contract with all improvements
+  const handleDownloadRevisedContract = () => {
+    window.location.href = `/api/document/${documentId}/revised`;
+    
+    toast({
+      title: "Downloading revised contract",
+      description: "Your revised contract with all recommended changes is being downloaded."
+    });
+  };
+  
+  // Function to download a revised contract with tracked changes
+  const handleDownloadTrackedChanges = () => {
+    window.location.href = `/api/document/${documentId}/revised-with-changes`;
+    
+    toast({
+      title: "Downloading contract with tracked changes",
+      description: "Your contract with tracked changes and explanations is being downloaded."
+    });
+  };
 
   const handleCopySuggestion = async (suggestion: string) => {
     const success = await copyToClipboard(suggestion);
