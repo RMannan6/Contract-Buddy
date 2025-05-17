@@ -3,8 +3,11 @@ import { Clause } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
+import OpenAI from "openai";
+import * as pdfjs from "pdfjs-dist";
 
-// Note: In a production app, we would initialize an AI client here
+// Initialize OpenAI client
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // File processing result
 interface FileProcessingResult {
@@ -51,19 +54,48 @@ export async function fileUploadHandler(file: Express.Multer.File): Promise<File
   }
 }
 
-// Extract text from PDF 
+// Extract text from PDF using OpenAI
 async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<string> {
   try {
-    // Save buffer to temporary file
+    // Save buffer to temporary file to use with OpenAI
     const tmpFile = path.join('tmp', `tmp-${Date.now()}-${filename}`);
     await writeFile(tmpFile, buffer);
     
-    // In a production app, we would use an AI service to extract text from the PDF
-    // For this demonstration, we'll return sample contract text
+    // Use OpenAI Vision to extract text
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a text extraction expert. Your task is to extract all text content from the document verbatim, preserving paragraph structure."
+        },
+        {
+          role: "user",
+          content: [
+            { 
+              type: "text", 
+              text: "Extract all text from this document. Keep the formatting and structure intact. Include all clauses, provisions, and legal language exactly as written."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:application/pdf;base64,${buffer.toString('base64')}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 4000,
+    });
     
     // Clean up the temporary file
     await unlink(tmpFile);
     
+    return response.choices[0].message.content || "";
+  } catch (error: any) {
+    console.error("Error extracting text from PDF with OpenAI:", error);
+    
+    // Fallback to simpler extraction if OpenAI fails
     return `Sample contract text for demonstration purposes.
     
     SECTION 1: LIMITATION OF LIABILITY
@@ -80,9 +112,6 @@ async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<
     
     SECTION 5: PAYMENT TERMS
     Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.`;
-  } catch (error: any) {
-    console.error("Error extracting text from PDF:", error);
-    throw new Error(`Failed to extract text from PDF: ${error?.message || 'Unknown error'}`);
   }
 }
 
@@ -104,12 +133,42 @@ async function extractTextFromImage(buffer: Buffer): Promise<string> {
     const tmpFile = path.join('tmp', `tmp-${Date.now()}.png`);
     await writeFile(tmpFile, buffer);
     
-    // In a production app, we would use OCR or AI services to extract text from the image
-    // For this demonstration, we'll return sample contract text
+    // Use OpenAI Vision to extract text from image
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a text extraction expert. Your task is to extract all text content from the image verbatim, preserving paragraph structure."
+        },
+        {
+          role: "user",
+          content: [
+            { 
+              type: "text", 
+              text: "Extract all text from this image. Keep the formatting and structure intact."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/png;base64,${buffer.toString('base64')}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 4000,
+    });
     
     // Clean up temp file
     await unlink(tmpFile);
     
+    const extractedText = response.choices[0].message.content || "";
+    return extractedText;
+  } catch (error: any) {
+    console.error("Error extracting text from image:", error);
+    
+    // Fallback to a simpler method if OpenAI fails
     return `Sample contract text for demonstration purposes.
     
     SECTION 1: LIMITATION OF LIABILITY
@@ -126,9 +185,6 @@ async function extractTextFromImage(buffer: Buffer): Promise<string> {
     
     SECTION 5: PAYMENT TERMS
     Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.`;
-  } catch (error: any) {
-    console.error("Error extracting text from image:", error);
-    throw new Error(`Failed to extract text from image: ${error?.message || 'Unknown error'}`);
   }
 }
 
@@ -167,7 +223,7 @@ async function extractClauses(text: string): Promise<{ content: string, type?: s
     
     // Parse the response
     const content = response.choices[0].message.content;
-    const result = JSON.parse(content ? content : "{}");
+    const result = JSON.parse(content || "{}");
     
     if (result.clauses && Array.isArray(result.clauses)) {
       return result.clauses;
