@@ -57,6 +57,7 @@ export const goldStandardClauses = pgTable("gold_standard_clauses", {
   type: text("type").notNull(),
   content: text("content").notNull(),
   embedding: text("embedding"),
+  description: text("description"),
   metadata: jsonb("metadata"),
 });
 
