@@ -63,6 +63,8 @@ export const goldStandardClauses = pgTable("gold_standard_clauses", {
 
 export const insertGoldStandardClauseSchema = createInsertSchema(goldStandardClauses).omit({
   id: true,
+  embedding: true,
+  metadata: true,
 });
 
 export type InsertGoldStandardClause = z.infer<typeof insertGoldStandardClauseSchema>;
