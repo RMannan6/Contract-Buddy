@@ -234,16 +234,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all clauses from the document
       const clauses = await storage.getClausesByDocumentId(documentId);
       
-      // Generate the revised contract
-      const revisedContract = generateRevisedContract(
+      // Generate the revised contract as Word document
+      const docBuffer = await generateRevisedContract(
         document.content,
         analysisResult.negotiationPoints as any,
         clauses
       );
       
-      res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename="revised_contract_${documentId}.txt"`);
-      res.send(revisedContract);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="revised_contract_${documentId}.docx"`);
+      res.send(docBuffer);
     } catch (error: any) {
       console.error("Error generating revised contract:", error);
       res.status(500).json({ message: error.message || "Failed to generate revised contract" });
@@ -275,16 +275,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all clauses from the document
       const clauses = await storage.getClausesByDocumentId(documentId);
       
-      // Generate the revised contract with tracked changes
-      const revisedContract = generateRevisedContractWithChanges(
+      // Generate the revised contract with tracked changes as Word document
+      const docBuffer = await generateRevisedContractWithChanges(
         document.content,
         analysisResult.negotiationPoints as any,
         clauses
       );
       
-      res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename="revised_contract_with_changes_${documentId}.txt"`);
-      res.send(revisedContract);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="revised_contract_with_changes_${documentId}.docx"`);
+      res.send(docBuffer);
     } catch (error: any) {
       console.error("Error generating revised contract with changes:", error);
       res.status(500).json({ message: error.message || "Failed to generate revised contract with changes" });
