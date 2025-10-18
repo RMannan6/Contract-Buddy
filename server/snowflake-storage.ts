@@ -120,17 +120,32 @@ export class SnowflakeStorage implements IStorage {
     const createdAt = new Date();
     const expiresAt = doc.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    // Pre-generate ID from explicit Snowflake sequence
+    const idRows = await snowflakeDb.execute<any>(
+      `SELECT seq_documents.NEXTVAL as next_id`
+    );
+    const newId = idRows[0]?.NEXT_ID || idRows[0]?.next_id;
+    
+    if (!newId) {
+      throw new Error('Failed to generate document ID from sequence');
+    }
+
+    // Insert with the pre-generated ID
     await snowflakeDb.execute(
-      `INSERT INTO documents (file_name, file_type, content, uploaded_at, expires_at) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [doc.fileName, doc.fileType, doc.content, createdAt.toISOString(), expiresAt.toISOString()]
+      `INSERT INTO documents (id, file_name, file_type, content, uploaded_at, expires_at) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [newId, doc.fileName, doc.fileType, doc.content, createdAt.toISOString(), expiresAt.toISOString()]
     );
     
-    // Query back the inserted document
+    // Query back using the known ID
     const rows = await snowflakeDb.execute<any>(
-      `SELECT * FROM documents WHERE file_name = ? ORDER BY id DESC LIMIT 1`,
-      [doc.fileName]
+      `SELECT * FROM documents WHERE id = ?`,
+      [newId]
     );
+    
+    if (!rows[0]) {
+      throw new Error('Failed to retrieve inserted document');
+    }
     
     const row = rows[0];
     return {
@@ -193,17 +208,31 @@ export class SnowflakeStorage implements IStorage {
   }
 
   async createClause(clause: InsertClause): Promise<Clause> {
+    // Pre-generate ID from explicit Snowflake sequence
+    const idRows = await snowflakeDb.execute<any>(
+      `SELECT seq_clauses.NEXTVAL as next_id`
+    );
+    const newId = idRows[0]?.NEXT_ID || idRows[0]?.next_id;
+    
+    if (!newId) {
+      throw new Error('Failed to generate clause ID from sequence');
+    }
+
     await snowflakeDb.execute(
-      `INSERT INTO clauses (document_id, content, type, risk_level, position) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [clause.documentId, clause.content, clause.type || null, clause.riskLevel || null, clause.position]
+      `INSERT INTO clauses (id, document_id, content, type, risk_level, position) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [newId, clause.documentId, clause.content, clause.type || null, clause.riskLevel || null, clause.position]
     );
     
-    // Query back the inserted clause
+    // Query back using the known ID
     const rows = await snowflakeDb.execute<any>(
-      `SELECT * FROM clauses WHERE document_id = ? AND position = ? ORDER BY id DESC LIMIT 1`,
-      [clause.documentId, clause.position]
+      `SELECT * FROM clauses WHERE id = ?`,
+      [newId]
     );
+    
+    if (!rows[0]) {
+      throw new Error('Failed to retrieve inserted clause');
+    }
     
     const row = rows[0];
     return {
@@ -292,19 +321,33 @@ export class SnowflakeStorage implements IStorage {
   async createAnalysisResult(result: InsertAnalysisResult): Promise<AnalysisResult> {
     const createdAt = new Date();
     
+    // Pre-generate ID from explicit Snowflake sequence
+    const idRows = await snowflakeDb.execute<any>(
+      `SELECT seq_analysis_results.NEXTVAL as next_id`
+    );
+    const newId = idRows[0]?.NEXT_ID || idRows[0]?.next_id;
+    
+    if (!newId) {
+      throw new Error('Failed to generate analysis result ID from sequence');
+    }
+    
     // Store negotiation_points as TEXT (JSON string)
     await snowflakeDb.execute(
-      `INSERT INTO analysis_results (document_id, negotiation_points, created_at) 
-       VALUES (?, ?, ?)`,
-      [result.documentId, JSON.stringify(result.negotiationPoints), createdAt.toISOString()]
+      `INSERT INTO analysis_results (id, document_id, negotiation_points, created_at) 
+       VALUES (?, ?, ?, ?)`,
+      [newId, result.documentId, JSON.stringify(result.negotiationPoints), createdAt.toISOString()]
     );
     
-    // Query back the inserted result
+    // Query back using the known ID
     const rows = await snowflakeDb.execute<any>(
       `SELECT id, document_id, negotiation_points, created_at 
-       FROM analysis_results WHERE document_id = ? ORDER BY id DESC LIMIT 1`,
-      [result.documentId]
+       FROM analysis_results WHERE id = ?`,
+      [newId]
     );
+    
+    if (!rows[0]) {
+      throw new Error('Failed to retrieve inserted analysis result');
+    }
     
     const row = rows[0];
     let negotiationPoints = row.NEGOTIATION_POINTS || row.negotiation_points;
