@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 import OpenAI from "openai";
-import * as pdfjs from "pdfjs-dist";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -54,32 +54,36 @@ export async function fileUploadHandler(file: Express.Multer.File): Promise<File
   }
 }
 
-// Helper function to get fallback contract text
-function getFallbackContractText(): string {
-  return `Sample contract text for demonstration purposes.
+// Extract text from PDF using pdfjs (fallback method without AI)
+async function extractTextFromPDFNative(buffer: Buffer): Promise<string> {
+  try {
+    const data = new Uint8Array(buffer);
+    const loadingTask = pdfjs.getDocument({ data });
+    const pdf = await loadingTask.promise;
     
-SECTION 1: LIMITATION OF LIABILITY
-Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.
-
-SECTION 2: TERMINATION
-Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.
-
-SECTION 3: INTELLECTUAL PROPERTY
-Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.
-
-SECTION 4: INDEMNIFICATION
-Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.
-
-SECTION 5: PAYMENT TERMS
-Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.`;
+    let fullText = "";
+    
+    // Extract text from each page
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
+      fullText += pageText + "\n\n";
+    }
+    
+    return fullText.trim();
+  } catch (error) {
+    console.error("Error extracting text from PDF using native parser:", error);
+    throw new Error("Failed to extract text from PDF");
+  }
 }
 
 // Extract text from PDF using OpenAI
 async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<string> {
-  // Skip OpenAI if API key is not valid
+  // Skip OpenAI if API key is not valid and use native PDF extraction
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
-    console.log("No valid OpenAI API key, using fallback contract text for PDF");
-    return getFallbackContractText();
+    console.log("No valid OpenAI API key, using native PDF text extraction");
+    return await extractTextFromPDFNative(buffer);
   }
 
   try {
@@ -125,8 +129,9 @@ async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<
     return response.choices[0].message.content || "";
   } catch (error: any) {
     console.error("Error extracting text from PDF with OpenAI:", error);
-    console.log("Using fallback contract text");
-    return getFallbackContractText();
+    console.log("Falling back to native PDF text extraction");
+    // Try native PDF extraction as fallback
+    return await extractTextFromPDFNative(buffer);
   }
 }
 
@@ -143,10 +148,9 @@ async function extractTextFromDocx(buffer: Buffer): Promise<string> {
 
 // Extract text from image
 async function extractTextFromImage(buffer: Buffer): Promise<string> {
-  // Skip OpenAI if API key is not valid
+  // For images, we need OpenAI - no fallback available
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
-    console.log("No valid OpenAI API key, using fallback contract text for image");
-    return getFallbackContractText();
+    throw new Error("OpenAI API key required for image text extraction. Please upload a PDF or DOCX file instead.");
   }
 
   try {
@@ -193,8 +197,7 @@ async function extractTextFromImage(buffer: Buffer): Promise<string> {
     return extractedText;
   } catch (error: any) {
     console.error("Error extracting text from image:", error);
-    console.log("Using fallback contract text");
-    return getFallbackContractText();
+    throw new Error("Failed to extract text from image. Please try a PDF or DOCX file instead.");
   }
 }
 
@@ -260,39 +263,42 @@ async function extractClauses(text: string): Promise<{ content: string, type?: s
   }
 }
 
-// More intelligent fallback for clause extraction
+// More intelligent fallback for clause extraction from actual text
 function getIntelligentDefaultClauses(text: string): { content: string, type?: string }[] {
-  // Check for common contract sections in the text
-  if (text.includes("SECTION 1: LIMITATION OF LIABILITY") || 
-      text.includes("Limitation of Liability") ||
-      text.includes("LIMITATION OF LIABILITY")) {
-    
-    return [
-      {
-        content: "Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.",
-        type: "limitation_of_liability"
-      },
-      {
-        content: "Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.",
-        type: "termination"
-      },
-      {
-        content: "Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.",
-        type: "intellectual_property"
-      },
-      {
-        content: "Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.",
-        type: "indemnification"
-      },
-      {
-        content: "Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.",
-        type: "payment_terms"
-      }
-    ];
-  }
+  // Always parse the actual text - never return hardcoded clauses
+  // Split text into clauses and try to detect their types
+  const clauses = splitIntoDefaultClauses(text);
   
-  // If no recognizable structure, use the simple paragraph splitter
-  return splitIntoDefaultClauses(text);
+  // Try to identify clause types based on keywords in the actual text
+  return clauses.map(clause => {
+    const content = clause.content.toLowerCase();
+    let type: string | undefined = undefined;
+    
+    if (content.includes("liability") || content.includes("damages") || content.includes("limit")) {
+      type = "limitation_of_liability";
+    } else if (content.includes("termination") || content.includes("terminate")) {
+      type = "termination";
+    } else if (content.includes("intellectual property") || content.includes("copyright") || content.includes("patent")) {
+      type = "intellectual_property";
+    } else if (content.includes("indemnif")) {
+      type = "indemnification";
+    } else if (content.includes("payment") || content.includes("invoice") || content.includes("fee")) {
+      type = "payment_terms";
+    } else if (content.includes("confidential")) {
+      type = "confidentiality";
+    } else if (content.includes("governing law") || content.includes("jurisdiction")) {
+      type = "governing_law";
+    } else if (content.includes("warrant")) {
+      type = "warranty";
+    } else if (content.includes("assignment") || content.includes("assign")) {
+      type = "assignment";
+    }
+    
+    return {
+      content: clause.content,
+      type: type || "other"
+    };
+  });
 }
 
 // Simple fallback function to split text into clauses by paragraphs
