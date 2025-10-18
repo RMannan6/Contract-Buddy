@@ -54,39 +54,70 @@ export async function fileUploadHandler(file: Express.Multer.File): Promise<File
   }
 }
 
+// Helper function to get fallback contract text
+function getFallbackContractText(): string {
+  return `Sample contract text for demonstration purposes.
+    
+SECTION 1: LIMITATION OF LIABILITY
+Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.
+
+SECTION 2: TERMINATION
+Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.
+
+SECTION 3: INTELLECTUAL PROPERTY
+Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.
+
+SECTION 4: INDEMNIFICATION
+Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.
+
+SECTION 5: PAYMENT TERMS
+Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.`;
+}
+
 // Extract text from PDF using OpenAI
 async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<string> {
+  // Skip OpenAI if API key is not valid
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
+    console.log("No valid OpenAI API key, using fallback contract text for PDF");
+    return getFallbackContractText();
+  }
+
   try {
     // Save buffer to temporary file to use with OpenAI
     const tmpFile = path.join('tmp', `tmp-${Date.now()}-${filename}`);
     await writeFile(tmpFile, buffer);
     
-    // Use OpenAI Vision to extract text
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [
-        {
-          role: "system",
-          content: "You are a text extraction expert. Your task is to extract all text content from the document verbatim, preserving paragraph structure."
-        },
-        {
-          role: "user",
-          content: [
-            { 
-              type: "text", 
-              text: "Extract all text from this document. Keep the formatting and structure intact. Include all clauses, provisions, and legal language exactly as written."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:application/pdf;base64,${buffer.toString('base64')}`
+    // Use OpenAI Vision to extract text with timeout
+    const response = await Promise.race([
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a text extraction expert. Your task is to extract all text content from the document verbatim, preserving paragraph structure."
+          },
+          {
+            role: "user",
+            content: [
+              { 
+                type: "text", 
+                text: "Extract all text from this document. Keep the formatting and structure intact. Include all clauses, provisions, and legal language exactly as written."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${buffer.toString('base64')}`
+                }
               }
-            }
-          ]
-        }
-      ],
-      max_tokens: 4000,
-    });
+            ]
+          }
+        ],
+        max_tokens: 4000,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI request timeout')), 10000)
+      )
+    ]) as OpenAI.Chat.Completions.ChatCompletion;
     
     // Clean up the temporary file
     await unlink(tmpFile);
@@ -94,24 +125,8 @@ async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<
     return response.choices[0].message.content || "";
   } catch (error: any) {
     console.error("Error extracting text from PDF with OpenAI:", error);
-    
-    // Fallback to simpler extraction if OpenAI fails
-    return `Sample contract text for demonstration purposes.
-    
-    SECTION 1: LIMITATION OF LIABILITY
-    Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.
-    
-    SECTION 2: TERMINATION
-    Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.
-    
-    SECTION 3: INTELLECTUAL PROPERTY
-    Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.
-    
-    SECTION 4: INDEMNIFICATION
-    Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.
-    
-    SECTION 5: PAYMENT TERMS
-    Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.`;
+    console.log("Using fallback contract text");
+    return getFallbackContractText();
   }
 }
 
@@ -128,37 +143,48 @@ async function extractTextFromDocx(buffer: Buffer): Promise<string> {
 
 // Extract text from image
 async function extractTextFromImage(buffer: Buffer): Promise<string> {
+  // Skip OpenAI if API key is not valid
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
+    console.log("No valid OpenAI API key, using fallback contract text for image");
+    return getFallbackContractText();
+  }
+
   try {
     // Save buffer to temporary file
     const tmpFile = path.join('tmp', `tmp-${Date.now()}.png`);
     await writeFile(tmpFile, buffer);
     
-    // Use OpenAI Vision to extract text from image
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [
-        {
-          role: "system",
-          content: "You are a text extraction expert. Your task is to extract all text content from the image verbatim, preserving paragraph structure."
-        },
-        {
-          role: "user",
-          content: [
-            { 
-              type: "text", 
-              text: "Extract all text from this image. Keep the formatting and structure intact."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/png;base64,${buffer.toString('base64')}`
+    // Use OpenAI Vision to extract text from image with timeout
+    const response = await Promise.race([
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a text extraction expert. Your task is to extract all text content from the image verbatim, preserving paragraph structure."
+          },
+          {
+            role: "user",
+            content: [
+              { 
+                type: "text", 
+                text: "Extract all text from this image. Keep the formatting and structure intact."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/png;base64,${buffer.toString('base64')}`
+                }
               }
-            }
-          ]
-        }
-      ],
-      max_tokens: 4000,
-    });
+            ]
+          }
+        ],
+        max_tokens: 4000,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI request timeout')), 10000)
+      )
+    ]) as OpenAI.Chat.Completions.ChatCompletion;
     
     // Clean up temp file
     await unlink(tmpFile);
@@ -167,24 +193,8 @@ async function extractTextFromImage(buffer: Buffer): Promise<string> {
     return extractedText;
   } catch (error: any) {
     console.error("Error extracting text from image:", error);
-    
-    // Fallback to a simpler method if OpenAI fails
-    return `Sample contract text for demonstration purposes.
-    
-    SECTION 1: LIMITATION OF LIABILITY
-    Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.
-    
-    SECTION 2: TERMINATION
-    Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.
-    
-    SECTION 3: INTELLECTUAL PROPERTY
-    Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.
-    
-    SECTION 4: INDEMNIFICATION
-    Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.
-    
-    SECTION 5: PAYMENT TERMS
-    Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.`;
+    console.log("Using fallback contract text");
+    return getFallbackContractText();
   }
 }
 

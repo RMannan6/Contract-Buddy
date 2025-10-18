@@ -13,7 +13,7 @@ export default function Analysis() {
   const { toast } = useToast();
   const documentId = params?.id ? parseInt(params.id) : null;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<{ negotiationPoints: NegotiationPoint[] }>({
     queryKey: [`/api/analysis/${documentId}`],
     enabled: !!documentId,
     refetchInterval: false,
