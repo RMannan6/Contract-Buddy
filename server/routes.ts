@@ -87,7 +87,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileName: req.file.originalname,
           fileType: req.file.mimetype,
           content: result.text,
-          uploadedAt: new Date(),
           expiresAt: expirationDate
         });
 
@@ -117,7 +116,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileName: req.file.originalname,
           fileType: req.file.mimetype,
           content: demoText,
-          uploadedAt: new Date(),
           expiresAt: expirationDate
         });
         

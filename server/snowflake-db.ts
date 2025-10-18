@@ -61,7 +61,7 @@ class SnowflakeConnection {
     });
   }
 
-  async execute<T = any>(sqlText: string, binds?: any[]): Promise<T[]> {
+  async execute<T = any>(sqlText: string, binds?: any[], options?: { jsonParse?: boolean }): Promise<T[]> {
     const conn = await this.connect();
 
     return new Promise((resolve, reject) => {
