@@ -64,34 +64,54 @@ interface MatchedClause {
   similarity: number;
 }
 
+// Priority order for clause types (highest risk first)
+const CLAUSE_TYPE_PRIORITY: { [key: string]: number } = {
+  'limitation_of_liability': 1,
+  'indemnification': 2,
+  'intellectual_property': 3,
+  'termination': 4,
+  'payment_terms': 5,
+  'confidentiality': 6,
+  'warranty': 7,
+  'governing_law': 8,
+  'assignment': 9,
+  'other': 10
+};
+
 function findMatchingClauses(
   clauses: Clause[],
   clauseEmbeddings: number[][],
   goldStandardClauses: GoldStandardClause[]
 ): MatchedClause[] {
-  // For now, since we're not using actual embeddings on stored goldStandardClauses (for simplicity),
-  // we'll use a simpler matching approach based on clause type
-  const matchedClauses: MatchedClause[] = [];
+  // Match clauses with gold standards based on type
+  const allMatchedClauses: MatchedClause[] = [];
   
   for (let i = 0; i < clauses.length; i++) {
     const userClause = clauses[i];
     
-    // Find gold standard clauses of the same type or default to the first one
+    // Find gold standard clauses of the same type
     const matchingGoldStandards = goldStandardClauses.filter(
       gold => gold.type === userClause.type
     );
     
     if (matchingGoldStandards.length > 0) {
-      // Use the first matching gold standard clause
-      matchedClauses.push({
+      allMatchedClauses.push({
         userClause,
         goldStandard: matchingGoldStandards[0],
-        similarity: 0.8 // Placeholder similarity score
+        similarity: 0.8
       });
     }
   }
   
-  return matchedClauses;
+  // Sort by priority (highest risk first) and take only top 5
+  const sortedClauses = allMatchedClauses.sort((a, b) => {
+    const priorityA = CLAUSE_TYPE_PRIORITY[a.userClause.type || 'other'] || 10;
+    const priorityB = CLAUSE_TYPE_PRIORITY[b.userClause.type || 'other'] || 10;
+    return priorityA - priorityB;
+  });
+  
+  // Return only the top 5 highest priority clauses
+  return sortedClauses.slice(0, 5);
 }
 
 // Generate analysis and recommendations
@@ -170,20 +190,20 @@ Here are the clauses to analyze:\n\n`;
     prompt += `Clause type: ${match.userClause.type || 'unknown'}\n\n`;
   });
   
-  prompt += `Please analyze EACH clause separately and provide recommendations for ALL of them. 
+  prompt += `Please analyze EACH of these ${matchedClauses.length} clauses separately. 
 For each clause, determine if it may disadvantage the customer and provide specific recommendations to improve it.
 Provide a clear explanation of why each clause matters in plain English that a non-lawyer can understand.
-Include ALL clauses in your analysis - do not skip any.`;
+Return exactly ${matchedClauses.length} negotiation points, one for each clause listed above.`;
   
   return prompt;
 }
 
 // More intelligent fallback that uses the matched clauses
 function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[]): NegotiationPoint[] {
-  // ONLY analyze clauses that actually exist in the contract - no defaults or hallucinations
+  // Analyze each of the top 5 priority clauses separately
   const analysisResults: NegotiationPoint[] = [];
   
-  // Process each matched clause from the actual contract
+  // Process each matched clause from the actual contract (already limited to top 5 by findMatchingClauses)
   for (const match of matchedClauses) {
     const type = match.userClause.type;
     const actualClauseText = match.userClause.content;
