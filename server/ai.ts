@@ -179,122 +179,97 @@ For each recommended change, provide a clear explanation of why it matters in pl
 
 // More intelligent fallback that uses the matched clauses
 function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[]): NegotiationPoint[] {
-  // For demonstration, we'll use the type of the clause to determine what kind of analysis to provide
-  const typedAnalysis: Record<string, NegotiationPoint> = {
-    limitation_of_liability: {
-      title: "Limitation of Liability",
-      originalClause: matchedClauses.find(c => c.userClause.type === "limitation_of_liability")?.userClause.content || 
-        "Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.",
-      explanation: "This clause severely restricts the amount the supplier would have to pay if something goes wrong, even if they are at fault. The cap is tied to recent payments, which could be far less than your actual damages in case of a major issue.",
-      suggestion: "Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the greater of (i) three times the total amount paid by Customer under this Agreement, or (ii) $1,000,000. This limitation shall not apply to Supplier's indemnification obligations, breaches of confidentiality, data breaches, or gross negligence.",
-      riskLevel: "high"
-    },
-    termination: {
-      title: "Termination for Convenience",
-      originalClause: matchedClauses.find(c => c.userClause.type === "termination")?.userClause.content || 
-        "Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.",
-      explanation: "This termination clause creates an imbalance where the supplier can exit quickly (30 days) while you need three times as long (90 days). This puts you at risk if the supplier decides to end the relationship, giving you limited time to find alternatives.",
-      suggestion: "Either party may terminate this Agreement for convenience upon sixty (60) days' written notice to the other party. In the event Supplier terminates for convenience, Supplier shall provide reasonable transition assistance to Customer at no additional cost for a period of up to 30 days following the termination date.",
-      riskLevel: "medium"
-    },
-    intellectual_property: {
-      title: "Intellectual Property Rights",
-      originalClause: matchedClauses.find(c => c.userClause.type === "intellectual_property")?.userClause.content || 
-        "Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.",
-      explanation: "Under this clause, you would not own any intellectual property that you're paying the supplier to create for you. Instead, you would only have a limited license to use it internally. This could severely restrict your ability to modify, expand upon, or commercialize the work you've paid for.",
-      suggestion: "All intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials specifically created for Customer by Supplier under this Agreement shall be owned exclusively by Customer. Supplier shall retain ownership of its pre-existing intellectual property and general know-how. Supplier hereby grants Customer a perpetual, irrevocable, worldwide, royalty-free license to use, modify, and incorporate Supplier's pre-existing intellectual property as necessary to use the deliverables for any business purpose.",
-      riskLevel: "high"
-    },
-    indemnification: {
-      title: "Indemnification",
-      originalClause: matchedClauses.find(c => c.userClause.type === "indemnification")?.userClause.content || 
-        "Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.",
-      explanation: "This one-sided indemnification clause requires you to protect the supplier from all claims related to your use of their services, but doesn't require them to protect you from claims that might arise from defects in their work. This places an unfair burden on you for potential legal issues.",
-      suggestion: "Each party shall defend, indemnify and hold harmless the other party from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from such party's breach of this Agreement, violation of applicable law, or negligent or willful acts or omissions. Supplier shall additionally indemnify Customer against any claims alleging that Customer's authorized use of the deliverables infringes any third party's intellectual property rights.",
-      riskLevel: "medium"
-    },
-    payment_terms: {
-      title: "Payment Terms",
-      originalClause: matchedClauses.find(c => c.userClause.type === "payment_terms")?.userClause.content || 
-        "Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.",
-      explanation: "The payment window of 15 days is unusually short compared to standard business practices (typically 30 days). Additionally, the interest rate of 1.5% per month (18% annually) is quite high. These terms could put unnecessary financial pressure on your business.",
-      suggestion: "Customer shall pay all undisputed invoices within thirty (30) days of receipt. Customer shall notify Supplier of any disputed invoice items within 10 days of receipt, and the parties shall work in good faith to resolve such disputes. Any undisputed amounts not paid when due will accrue interest at a rate of 1% per month or the maximum rate permitted by law, whichever is less.",
-      riskLevel: "low"
-    },
-    confidentiality: {
-      title: "Confidentiality",
-      originalClause: matchedClauses.find(c => c.userClause.type === "confidentiality")?.userClause.content || 
-        "Customer agrees to maintain the confidentiality of all proprietary information disclosed by Supplier and shall not disclose such information to any third party without Supplier's prior written consent.",
-      explanation: "This one-sided confidentiality clause only protects the supplier's information while not requiring them to protect your confidential information. It also has no time limitation, potentially creating an indefinite obligation.",
-      suggestion: "Each party shall maintain the confidentiality of the other party's Confidential Information and shall not disclose or use such Confidential Information except as necessary to perform under this Agreement. Each party shall protect the other party's Confidential Information using at least the same degree of care it uses to protect its own confidential information, but no less than reasonable care. These obligations shall survive termination of this Agreement for a period of 5 years.",
-      riskLevel: "medium"
-    }
-  };
-
-  // Identify which clauses we have in the contract
+  // ONLY analyze clauses that actually exist in the contract - no defaults or hallucinations
   const analysisResults: NegotiationPoint[] = [];
   
-  // First add clauses that match known types
-  for (const type of Object.keys(typedAnalysis)) {
-    const matchedClause = matchedClauses.find(c => c.userClause.type === type);
-    if (matchedClause) {
-      // Use the actual clause text from the user's contract
-      const analysis = {...typedAnalysis[type]};
-      analysis.originalClause = matchedClause.userClause.content;
+  // Process each matched clause from the actual contract
+  for (const match of matchedClauses) {
+    const type = match.userClause.type;
+    const actualClauseText = match.userClause.content;
+    
+    // Generate analysis based on clause type, but ALWAYS use the actual clause text
+    let analysis: NegotiationPoint | null = null;
+    
+    if (type === "limitation_of_liability") {
+      analysis = {
+        title: "Limitation of Liability",
+        originalClause: actualClauseText,
+        explanation: "This clause restricts the amount the supplier would have to pay if something goes wrong. Review whether the liability cap adequately protects your interests in case of a major issue.",
+        suggestion: "Consider negotiating for higher liability caps that better reflect potential damages. Ensure the limitation doesn't apply to cases of gross negligence, willful misconduct, or data breaches.",
+        riskLevel: "high"
+      };
+    } else if (type === "termination") {
+      analysis = {
+        title: "Termination Clause",
+        originalClause: actualClauseText,
+        explanation: "Review the termination terms to ensure they provide adequate notice periods and don't create an imbalance between parties.",
+        suggestion: "Consider equal notice periods for both parties and include provisions for transition assistance if the supplier terminates.",
+        riskLevel: "medium"
+      };
+    } else if (type === "intellectual_property") {
+      analysis = {
+        title: "Intellectual Property Rights",
+        originalClause: actualClauseText,
+        explanation: "This clause determines who owns the work product created under the agreement. Ensure you retain appropriate rights to use and modify deliverables.",
+        suggestion: "Consider requesting ownership of custom work product created specifically for you, while allowing the supplier to retain their pre-existing IP and general know-how.",
+        riskLevel: "high"
+      };
+    } else if (type === "indemnification") {
+      analysis = {
+        title: "Indemnification",
+        originalClause: actualClauseText,
+        explanation: "Review whether the indemnification obligations are balanced between parties and appropriate for the risks involved.",
+        suggestion: "Consider mutual indemnification provisions and ensure the supplier indemnifies you against IP infringement claims arising from their deliverables.",
+        riskLevel: "medium"
+      };
+    } else if (type === "payment_terms") {
+      analysis = {
+        title: "Payment Terms",
+        originalClause: actualClauseText,
+        explanation: "Review the payment timeline and late payment penalties to ensure they align with your standard business practices.",
+        suggestion: "Consider negotiating for standard 30-day payment terms and lower interest rates on late payments. Include provisions for disputing invoices.",
+        riskLevel: "low"
+      };
+    } else if (type === "confidentiality") {
+      analysis = {
+        title: "Confidentiality",
+        originalClause: actualClauseText,
+        explanation: "Ensure confidentiality obligations are mutual and have reasonable time limitations.",
+        suggestion: "Consider mutual confidentiality provisions with a defined time period (e.g., 5 years after termination) and clear exclusions for information already known or publicly available.",
+        riskLevel: "medium"
+      };
+    } else if (type === "warranty") {
+      analysis = {
+        title: "Warranty",
+        originalClause: actualClauseText,
+        explanation: "Review warranty provisions to ensure adequate protection and remedies if deliverables don't meet specifications.",
+        suggestion: "Consider including specific performance warranties and clear remedies such as re-performance or refunds if warranties are breached.",
+        riskLevel: "medium"
+      };
+    } else if (type === "governing_law") {
+      analysis = {
+        title: "Governing Law and Jurisdiction",
+        originalClause: actualClauseText,
+        explanation: "The choice of governing law and jurisdiction can significantly impact your rights and litigation costs.",
+        suggestion: "Consider negotiating for governing law and jurisdiction in your home state or a neutral location to minimize litigation costs.",
+        riskLevel: "low"
+      };
+    } else {
+      // For unknown types, provide generic analysis
+      analysis = {
+        title: `${type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Contract Clause'}`,
+        originalClause: actualClauseText,
+        explanation: "This clause should be reviewed by legal counsel to ensure it adequately protects your interests.",
+        suggestion: "Have your attorney review this clause to identify any potential risks or areas for negotiation.",
+        riskLevel: "medium"
+      };
+    }
+    
+    if (analysis) {
       analysisResults.push(analysis);
     }
   }
   
-  // If we have fewer than 5 points, add some fallback ones
-  const fallbackAnalysis = getFallbackAnalysis();
-  while (analysisResults.length < 5 && fallbackAnalysis.length > 0) {
-    const fallback = fallbackAnalysis.shift();
-    // Only add if we don't already have this type
-    if (fallback && !analysisResults.some(a => a.title === fallback.title)) {
-      analysisResults.push(fallback);
-    }
-  }
-  
-  return analysisResults;
-}
-
-// Basic fallback for when no clauses are available
-function getFallbackAnalysis(): NegotiationPoint[] {
-  return [
-    {
-      title: "Limitation of Liability",
-      originalClause: "Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the amount paid by Customer in the 12 months preceding the event giving rise to the claim.",
-      explanation: "This clause severely restricts the amount the supplier would have to pay if something goes wrong, even if they are at fault. The cap is tied to recent payments, which could be far less than your actual damages in case of a major issue.",
-      suggestion: "Supplier's total liability arising out of or related to this Agreement, whether in contract, tort or otherwise, shall not exceed the greater of (i) three times the total amount paid by Customer under this Agreement, or (ii) $1,000,000. This limitation shall not apply to Supplier's indemnification obligations, breaches of confidentiality, data breaches, or gross negligence.",
-      riskLevel: "high"
-    },
-    {
-      title: "Termination for Convenience",
-      originalClause: "Supplier may terminate this Agreement at any time upon thirty (30) days' written notice to Customer. Customer may terminate this Agreement for convenience upon ninety (90) days' written notice to Supplier.",
-      explanation: "This termination clause creates an imbalance where the supplier can exit quickly (30 days) while you need three times as long (90 days). This puts you at risk if the supplier decides to end the relationship, giving you limited time to find alternatives.",
-      suggestion: "Either party may terminate this Agreement for convenience upon sixty (60) days' written notice to the other party. In the event Supplier terminates for convenience, Supplier shall provide reasonable transition assistance to Customer at no additional cost for a period of up to 30 days following the termination date.",
-      riskLevel: "medium"
-    },
-    {
-      title: "Intellectual Property Rights",
-      originalClause: "Customer agrees that all intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials created by Supplier under this Agreement shall be owned exclusively by Supplier. Customer shall have a non-exclusive license to use such materials for its internal business purposes only.",
-      explanation: "Under this clause, you would not own any intellectual property that you're paying the supplier to create for you. Instead, you would only have a limited license to use it internally. This could severely restrict your ability to modify, expand upon, or commercialize the work you've paid for.",
-      suggestion: "All intellectual property rights, including but not limited to patents, copyrights, trademarks and trade secrets, in any materials specifically created for Customer by Supplier under this Agreement shall be owned exclusively by Customer. Supplier shall retain ownership of its pre-existing intellectual property and general know-how. Supplier hereby grants Customer a perpetual, irrevocable, worldwide, royalty-free license to use, modify, and incorporate Supplier's pre-existing intellectual property as necessary to use the deliverables for any business purpose.",
-      riskLevel: "high"
-    },
-    {
-      title: "Indemnification",
-      originalClause: "Customer shall defend, indemnify and hold harmless Supplier from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from Customer's use of the services or deliverables provided under this Agreement.",
-      explanation: "This one-sided indemnification clause requires you to protect the supplier from all claims related to your use of their services, but doesn't require them to protect you from claims that might arise from defects in their work. This places an unfair burden on you for potential legal issues.",
-      suggestion: "Each party shall defend, indemnify and hold harmless the other party from and against all claims, damages, losses and expenses, including but not limited to attorneys' fees, arising out of or resulting from such party's breach of this Agreement, violation of applicable law, or negligent or willful acts or omissions. Supplier shall additionally indemnify Customer against any claims alleging that Customer's authorized use of the deliverables infringes any third party's intellectual property rights.",
-      riskLevel: "medium"
-    },
-    {
-      title: "Payment Terms",
-      originalClause: "Customer shall pay all invoices within fifteen (15) days of receipt. Any amounts not paid when due will accrue interest at a rate of 1.5% per month or the maximum rate permitted by law, whichever is less.",
-      explanation: "The payment window of 15 days is unusually short compared to standard business practices (typically 30 days). Additionally, the interest rate of 1.5% per month (18% annually) is quite high. These terms could put unnecessary financial pressure on your business.",
-      suggestion: "Customer shall pay all undisputed invoices within thirty (30) days of receipt. Customer shall notify Supplier of any disputed invoice items within 10 days of receipt, and the parties shall work in good faith to resolve such disputes. Any undisputed amounts not paid when due will accrue interest at a rate of 1% per month or the maximum rate permitted by law, whichever is less.",
-      riskLevel: "low"
-    }
-  ];
-}
+  // Return ONLY the clauses found in the actual contract - no padding with fake clauses
+  return analysisResults.slice(0, 5);
+} 
