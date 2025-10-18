@@ -1,0 +1,2 @@
+-- Snowflake Database Schema for ContractBuddy
+-- This script creates the necessary tables in your Snowflake database

@@ -1,8 +1,11 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { SnowflakeStorage } from "./snowflake-storage";
 import { fileUploadHandler } from "./ocr";
 import { analyzeContract } from "./ai";
+
+// Use Snowflake storage
+const storage = new SnowflakeStorage();
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -50,7 +53,14 @@ const setupCleanup = () => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize database schema and cleanup job
+  // Initialize Snowflake tables
+  const { initializeSnowflakeTables } = await import('./init-snowflake');
+  await initializeSnowflakeTables();
+  
+  // Initialize gold standard clauses
+  await storage.initializeGoldStandardClauses();
+  
+  // Setup cleanup job
   setupCleanup();
 
   // Health check endpoint
