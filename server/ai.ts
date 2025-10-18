@@ -170,9 +170,10 @@ Here are the clauses to analyze:\n\n`;
     prompt += `Clause type: ${match.userClause.type || 'unknown'}\n\n`;
   });
   
-  prompt += `Please identify the 5 most important clauses to negotiate based on risk level and impact. 
-Focus on clauses that may disadvantage the customer and provide specific recommendations to improve them.
-For each recommended change, provide a clear explanation of why it matters in plain English that a non-lawyer can understand.`;
+  prompt += `Please analyze EACH clause separately and provide recommendations for ALL of them. 
+For each clause, determine if it may disadvantage the customer and provide specific recommendations to improve it.
+Provide a clear explanation of why each clause matters in plain English that a non-lawyer can understand.
+Include ALL clauses in your analysis - do not skip any.`;
   
   return prompt;
 }
@@ -270,6 +271,6 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
     }
   }
   
-  // Return ONLY the clauses found in the actual contract - no padding with fake clauses
-  return analysisResults.slice(0, 5);
+  // Return ALL clauses found in the actual contract - analyze each one separately
+  return analysisResults;
 } 
