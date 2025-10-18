@@ -54,7 +54,7 @@ export async function initializeSnowflakeTables(): Promise<void> {
       CREATE TABLE IF NOT EXISTS analysis_results (
         id NUMBER AUTOINCREMENT PRIMARY KEY,
         document_id NUMBER NOT NULL,
-        negotiation_points VARIANT NOT NULL,
+        negotiation_points TEXT NOT NULL,
         created_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP()
       )
     `);

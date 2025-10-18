@@ -292,11 +292,10 @@ export class SnowflakeStorage implements IStorage {
   async createAnalysisResult(result: InsertAnalysisResult): Promise<AnalysisResult> {
     const createdAt = new Date();
     
-    // Snowflake parameter binding doesn't support VARIANT directly
-    // Must use PARSE_JSON() in SQL and pass JSON string as parameter
+    // Store negotiation_points as TEXT (JSON string)
     await snowflakeDb.execute(
       `INSERT INTO analysis_results (document_id, negotiation_points, created_at) 
-       VALUES (?, PARSE_JSON(?), ?)`,
+       VALUES (?, ?, ?)`,
       [result.documentId, JSON.stringify(result.negotiationPoints), createdAt.toISOString()]
     );
     
