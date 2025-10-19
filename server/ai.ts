@@ -127,9 +127,9 @@ async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<Negoti
       // Create prompt for the LLM
       const prompt = createAnalysisPrompt(matchedClauses);
       
-      // Call the LLM
+      // Call the LLM using GPT-5 for enhanced contract analysis
       const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: "gpt-5",
         messages: [
           {
             role: "system",

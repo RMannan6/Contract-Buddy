@@ -120,11 +120,17 @@ class SnowflakeConnection {
   ): Promise<any> {
     const conn = await this.connect();
 
+    // Validate stageFilePath matches expected pattern to prevent injection
+    if (!/^doc_\d+\.(pdf|docx|jpg|png|bin)$/.test(stageFilePath)) {
+      throw new Error(`Invalid stage file path: ${stageFilePath}`);
+    }
+
     return new Promise((resolve, reject) => {
       // Use parameterized query to prevent SQL injection
+      // GET_PRESIGNED_URL takes the full stage path as first argument
       const sqlText = `
         SELECT "${this.config.database}"."${this.config.schema}"."${modelName}" ! PREDICT(
-          GET_PRESIGNED_URL(@${stageName}, ?),
+          GET_PRESIGNED_URL(@${stageName}, ?, 360),
           2
         ) AS prediction
       `;
