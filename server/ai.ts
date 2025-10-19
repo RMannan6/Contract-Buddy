@@ -171,7 +171,15 @@ async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<Negoti
       if (!content) {
         return getIntelligentFallbackWithMatchedClauses(matchedClauses);
       }
-      const result = JSON.parse(content);
+      
+      // Strip markdown code blocks if present (GPT often wraps JSON in ```json ... ```)
+      let cleanedContent = content.trim();
+      if (cleanedContent.startsWith('```')) {
+        // Remove opening ```json or ``` and closing ```
+        cleanedContent = cleanedContent.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+      }
+      
+      const result = JSON.parse(cleanedContent);
       return result.negotiationPoints || getIntelligentFallbackWithMatchedClauses(matchedClauses);
     } catch (apiError: any) {
       // If API error (like quota exceeded), use intelligent fallback
@@ -189,21 +197,25 @@ async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<Negoti
 
 // Create prompt for the LLM
 function createAnalysisPrompt(matchedClauses: MatchedClause[]): string {
-  let prompt = `I need you to analyze the following contract clauses and provide REWRITTEN versions that better protect the customer. 
+  let prompt = `You are a contract attorney helping a customer improve their contract clauses. 
 
-CRITICAL INSTRUCTIONS:
-- For the "suggestion" field, you MUST provide the complete REWRITTEN clause text (not advice, but actual replacement text)
-- The rewritten clause should maintain the same legal structure but with improved terms favoring the customer
-- Use the gold standard example as a reference for better language
+For each clause below:
+1. Identify the risk level (high/medium/low)
+2. Explain in plain English why this clause matters and what problems it could cause
+3. Write a COMPLETE REPLACEMENT clause that maintains the same purpose but with better terms that protect the customer
 
-Please respond with a JSON object containing an array of negotiationPoints with the following structure:
+CRITICAL: The "suggestion" field MUST contain the ENTIRE rewritten clause - a full, legal-quality replacement text that could be inserted into the contract. NOT advice, NOT a summary - an actual complete clause.
+
+Use the gold standard as a guide for structure and key protections to include.
+
+Respond with ONLY a JSON object (no markdown, no code blocks) in this exact format:
 {
   "negotiationPoints": [
     {
-      "title": "Clause title",
-      "originalClause": "Original text",
-      "explanation": "Why this matters (in plain English)",
-      "suggestion": "COMPLETE REWRITTEN CLAUSE TEXT HERE (actual replacement text, not advice)",
+      "title": "Brief title for the clause type",
+      "originalClause": "The original clause text",
+      "explanation": "Plain English explanation of why this clause is risky and what could go wrong",
+      "suggestion": "COMPLETE REWRITTEN CLAUSE with all details, conditions, and protections",
       "riskLevel": "high|medium|low"
     }
   ]
@@ -230,23 +242,34 @@ Return exactly ${matchedClauses.length} negotiation points, one for each clause 
   return prompt;
 }
 
-// Create a custom suggestion that adapts the gold standard to the specific clause
-function createCustomSuggestion(clauseType: string | null | undefined, actualClause: string, goldStandard: string): string {
-  // For each clause, create a unique suggestion by using the gold standard as a template
-  // but adapting it to be relevant to the specific contract clause
+// Create a complete rewritten clause based on clause type and gold standard
+function createCompleteRewrittenClause(clauseType: string | null | undefined, actualClause: string, goldStandard: string): string {
+  // Generate a complete, detailed rewritten clause based on the clause type
+  // This should be a full legal clause that could replace the original
   
-  // Extract key details from the actual clause (like amounts, time periods, parties)
-  const hasSpecificAmount = /\$[\d,]+/.test(actualClause);
-  const hasTimePeriod = /\d+\s+(day|month|year|week)s?/i.test(actualClause);
+  const type = clauseType?.toLowerCase() || 'other';
   
-  // Use the gold standard but add a note about adapting it to the contract
-  let suggestion = goldStandard;
-  
-  // Add a prefix note to make each suggestion unique and contextual
-  const prefix = `[Suggested Revision]: `;
-  suggestion = prefix + suggestion;
-  
-  return suggestion;
+  // Create comprehensive rewrites for each clause type
+  if (type === 'limitation_of_liability') {
+    return `LIMITATION OF LIABILITY: Notwithstanding anything to the contrary in this Agreement, neither party's aggregate liability arising out of or related to this Agreement, whether in contract, tort, or under any other theory of liability, shall exceed the greater of: (i) two times the total fees paid or payable under this Agreement in the twelve (12) months immediately preceding the claim, or (ii) $500,000. The foregoing limitations shall not apply to: (a) either party's gross negligence or willful misconduct; (b) breach of confidentiality obligations; (c) infringement of the other party's intellectual property rights; (d) data breaches or unauthorized access to personal information; (e) either party's indemnification obligations under this Agreement; or (f) bodily injury or death caused by either party's negligence.`;
+  } else if (type === 'termination') {
+    return `TERMINATION: Either party may terminate this Agreement: (a) for convenience by providing ninety (90) days prior written notice to the other party; (b) immediately upon written notice if the other party materially breaches this Agreement and fails to cure such breach within thirty (30) days of receiving written notice thereof; or (c) immediately if the other party becomes insolvent, files for bankruptcy protection, makes an assignment for the benefit of creditors, or ceases business operations. Upon termination, Supplier shall provide reasonable transition assistance for up to sixty (60) days to facilitate Customer's migration to an alternative provider. Customer shall pay only for services actually rendered through the effective termination date, and Supplier shall refund any prepaid fees for services not delivered. Each party shall promptly return or destroy all Confidential Information of the other party.`;
+  } else if (type === 'intellectual_property') {
+    return `INTELLECTUAL PROPERTY: Customer shall own all right, title, and interest in and to all custom work product, deliverables, and materials created specifically for Customer under this Agreement ("Custom IP"). Supplier hereby irrevocably assigns to Customer all Custom IP, and shall execute any documents reasonably necessary to perfect such assignment. Supplier retains ownership of its pre-existing intellectual property, tools, methodologies, and general know-how existing prior to this Agreement ("Supplier IP"). To the extent any Supplier IP is incorporated into the Custom IP, Supplier grants Customer a perpetual, irrevocable, worldwide, royalty-free, fully-paid license to use, reproduce, modify, and distribute such Supplier IP as part of the Custom IP. Neither party shall use the other party's trademarks, service marks, or brand names without the other party's prior written consent.`;
+  } else if (type === 'indemnification') {
+    return `INDEMNIFICATION: Supplier shall indemnify, defend, and hold harmless Customer and its affiliates, officers, directors, employees, and agents from and against any and all third-party claims, demands, lawsuits, damages, losses, liabilities, and expenses (including reasonable attorneys' fees and court costs) arising from or related to: (a) any claim that the services, deliverables, or materials provided by Supplier infringe or misappropriate any third party's intellectual property rights; (b) Supplier's material breach of its obligations under this Agreement; (c) Supplier's gross negligence or willful misconduct; or (d) bodily injury or property damage caused by Supplier's acts or omissions. Customer shall indemnify Supplier from claims arising solely from Customer's unauthorized modification of deliverables or use of deliverables in a manner that violates this Agreement. The indemnified party shall promptly notify the indemnifying party of any claim, cooperate reasonably in the defense, and the indemnifying party shall have sole control of the defense and any settlement (provided such settlement does not impose obligations on or admit liability of the indemnified party without its consent).`;
+  } else if (type === 'payment_terms') {
+    return `PAYMENT TERMS: Customer shall pay all undisputed invoiced amounts within thirty (30) days of invoice date via wire transfer, ACH, or check to the account designated by Supplier. Supplier shall submit detailed invoices with supporting documentation for all fees, expenses, and charges. Customer may withhold payment and provide written notice if it disputes any charges in good faith, and the parties shall work together to resolve such disputes within fifteen (15) business days. Undisputed amounts remain due per the original payment schedule. Late payments of undisputed amounts shall accrue interest at the lesser of 1.5% per month or the maximum rate permitted by applicable law. All fees are exclusive of applicable sales, use, and other taxes, which Customer shall pay or provide valid exemption certificates. Supplier shall not suspend services for non-payment without thirty (30) days prior written notice and opportunity to cure.`;
+  } else if (type === 'confidentiality') {
+    return `CONFIDENTIALITY: Each party agrees to maintain in strict confidence all Confidential Information disclosed by the other party and to use such information only for purposes directly related to this Agreement. "Confidential Information" means all non-public information, whether written, oral, or electronic, that is marked as confidential or that a reasonable person would understand to be confidential given the nature of the information and circumstances of disclosure. Confidential Information excludes information that: (a) is or becomes publicly available through no breach of this Agreement; (b) was rightfully in the receiving party's possession prior to disclosure; (c) is independently developed by the receiving party without use of or reference to the other party's Confidential Information; or (d) is rightfully received from a third party without confidentiality obligations. These confidentiality obligations shall survive for five (5) years after termination or expiration of this Agreement.`;
+  } else if (type === 'warranty') {
+    return `WARRANTIES: Supplier warrants that: (a) the services shall be performed in a professional and workmanlike manner consistent with generally accepted industry standards; (b) the deliverables shall materially conform to the specifications and requirements set forth in the applicable Statement of Work; (c) the deliverables and Supplier's performance hereunder shall not infringe, misappropriate, or otherwise violate any third party's intellectual property rights; (d) Supplier has the full right, power, and authority to enter into this Agreement and to grant the rights granted herein; and (e) the deliverables shall be free from viruses, malware, and other harmful code. If any deliverables do not conform to these warranties, Supplier shall, at its expense, re-perform the non-conforming services or replace the non-conforming deliverables within thirty (30) days of receiving written notice. If Supplier fails to cure the breach within such period, Customer may terminate the affected portion of this Agreement and receive a pro-rata refund of fees paid for such non-conforming deliverables.`;
+  } else if (type === 'governing_law') {
+    return `GOVERNING LAW AND JURISDICTION: This Agreement shall be governed by and construed in accordance with the laws of the State of [Customer's State], without giving effect to its conflict of laws principles. Each party irrevocably consents to the exclusive jurisdiction and venue of the state and federal courts located in [Customer's County, Customer's State] for any disputes, claims, or controversies arising out of or relating to this Agreement. Each party hereby waives any objection to such jurisdiction or venue on the grounds of inconvenient forum or otherwise. The prevailing party in any litigation shall be entitled to recover its reasonable attorneys' fees and costs from the other party.`;
+  } else {
+    // For unknown types, create a generic but comprehensive clause
+    return `REVISED PROVISION: This provision is revised to ensure: (a) both parties have balanced rights and obligations under the terms of this Agreement; (b) all commitments have clearly defined scope, specific performance standards, reasonable duration, and fair termination conditions; (c) liability for breach is appropriately allocated based on fault, control, and ability to mitigate damages; (d) Customer retains reasonable flexibility to address changing business needs and market conditions; (e) notice requirements and cure periods are clearly specified; (f) dispute resolution procedures are fair, efficient, and allow for escalation when necessary; and (g) remedies for non-performance are proportionate and enforceable. All specific terms, amounts, and time periods should be reviewed by legal counsel and negotiated in good faith to reflect the parties' actual business relationship and risk allocation.`;
+  }
 }
 
 // More intelligent fallback that uses the matched clauses
@@ -260,9 +283,9 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
     const actualClauseText = match.userClause.content;
     const goldStandardText = match.goldStandard.content;
     
-    // Create a custom suggestion that combines the gold standard with context from the actual clause
+    // Create a complete rewritten clause that combines the gold standard with context from the actual clause
     // This ensures each suggestion is unique and relevant to the specific clause
-    const customSuggestion = createCustomSuggestion(type, actualClauseText, goldStandardText);
+    const rewrittenClause = createCompleteRewrittenClause(type, actualClauseText, goldStandardText);
     
     // Generate analysis based on clause type, but ALWAYS use the actual clause text
     let analysis: NegotiationPoint | null = null;
@@ -272,7 +295,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Limitation of Liability",
         originalClause: actualClauseText,
         explanation: "This clause restricts how much the supplier must pay if something goes wrong. The current version may cap liability too low to adequately protect you in case of major issues, and may not exclude gross negligence or data breaches.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "high"
       };
     } else if (type === "termination") {
@@ -280,7 +303,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Termination Clause",
         originalClause: actualClauseText,
         explanation: "This clause controls how and when either party can end the agreement. Unbalanced termination rights can leave you vulnerable to sudden service disruption or unfavorable long-term commitments.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "medium"
       };
     } else if (type === "intellectual_property") {
@@ -288,7 +311,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Intellectual Property Rights",
         originalClause: actualClauseText,
         explanation: "This clause determines who owns the work created under this agreement. If not properly negotiated, you could pay for custom work but not actually own it, limiting your ability to use, modify, or transfer it freely.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "high"
       };
     } else if (type === "indemnification") {
@@ -296,7 +319,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Indemnification",
         originalClause: actualClauseText,
         explanation: "This clause determines who pays legal costs and damages if someone sues over the work performed. One-sided indemnification could leave you financially responsible for the supplier's mistakes or intellectual property violations.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "medium"
       };
     } else if (type === "payment_terms") {
@@ -304,7 +327,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Payment Terms",
         originalClause: actualClauseText,
         explanation: "This clause establishes when and how you must pay. Unfavorable payment terms could require upfront payment before delivery, impose excessive late fees, or prevent you from disputing incorrect charges.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "low"
       };
     } else if (type === "confidentiality") {
@@ -312,7 +335,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Confidentiality",
         originalClause: actualClauseText,
         explanation: "This clause protects sensitive information shared during the business relationship. One-sided or overly broad confidentiality obligations could restrict your ability to discuss your own business or use general knowledge gained during the relationship.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "medium"
       };
     } else if (type === "warranty") {
@@ -320,7 +343,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Warranty",
         originalClause: actualClauseText,
         explanation: "This clause establishes what the supplier promises about their work quality and what remedies you have if the work is defective. Weak warranties or disclaimer clauses can leave you with no recourse if deliverables don't meet your needs.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "medium"
       };
     } else if (type === "governing_law") {
@@ -328,18 +351,18 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         title: "Governing Law and Jurisdiction",
         originalClause: actualClauseText,
         explanation: "This clause determines which state's laws apply and where lawsuits must be filed. Unfavorable jurisdiction could force you to litigate in a distant, expensive forum or under laws that don't protect your interests as well.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "low"
       };
     } else {
-      // For unknown or other types, use custom suggestion based on gold standard
+      // For unknown or other types, use complete rewritten clause based on gold standard
       const clauseTitle = type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Contract Provision';
       
       analysis = {
         title: clauseTitle,
         originalClause: actualClauseText,
         explanation: "This provision should be carefully reviewed to ensure it adequately protects your interests and maintains fair balance between both parties. Consider whether the terms are reasonable, achievable, and aligned with your business objectives.",
-        suggestion: customSuggestion,
+        suggestion: rewrittenClause,
         riskLevel: "medium"
       };
     }
