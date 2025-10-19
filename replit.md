@@ -204,3 +204,19 @@ Preferred communication style: Simple, everyday language.
   - Original clause, suggested clause, and explanation boxes have max-height and scrolling
   - Preserves formatting with whitespace-pre-wrap and leading-relaxed
   - Shows complete clause text regardless of length
+
+### Track Changes Download Fix (October 19, 2025)
+- **Restructured tracked changes document generation** to eliminate brittle text matching
+  - Old approach tried to match clauses within paragraphs using `paragraph.includes()` which often failed
+  - Failed when clauses spanned multiple paragraphs or had formatting differences
+- **New two-part document structure**:
+  - Part 1: Full original contract text preserved as-is
+  - Part 2: "SUGGESTED CHANGES WITH EXPLANATIONS" section listing all top 5 changes
+- **Each change shows**:
+  - Change number and title
+  - Risk level (color-coded: red=high, orange=medium, green=low)
+  - Original clause text (with strikethrough in red)
+  - Suggested replacement clause (with yellow highlight in green)
+  - Plain-English explanation of why this matters
+- **Added defensive guards** to skip changes with missing data
+- **Result**: More reliable, clearer, and user-friendly tracked changes documents
