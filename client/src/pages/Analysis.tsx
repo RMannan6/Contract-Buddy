@@ -53,7 +53,10 @@ export default function Analysis() {
   };
 
   const downloadPdf = () => {
-    // In a real implementation, this would generate and download a PDF
+    if (!documentId) return;
+    
+    window.location.href = `/api/document/${documentId}/pdf-report`;
+    
     toast({
       title: "Download Started",
       description: "Your PDF report is being generated and will download shortly",

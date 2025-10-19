@@ -19,66 +19,105 @@ export async function generateRevisedContract(
   // Only use the top negotiation points (we focus on the 5 most important changes)
   const topPoints = negotiationPoints.slice(0, 5);
   
-  // Process each negotiation point
+  // Process each negotiation point - use a more flexible matching approach
   for (const point of topPoints) {
     const originalClause = point.originalClause;
     const improvedClause = point.suggestion;
     
-    // Replace the original clause with the suggested improvement
     if (originalClause && improvedClause) {
-      revisedText = revisedText.replace(originalClause, improvedClause);
+      // Try exact match first
+      if (revisedText.includes(originalClause)) {
+        revisedText = revisedText.replace(originalClause, improvedClause);
+      } else {
+        // Try with normalized whitespace
+        const normalizedOriginal = originalClause.replace(/\s+/g, ' ').trim();
+        const normalizedText = revisedText.replace(/\s+/g, ' ');
+        
+        if (normalizedText.includes(normalizedOriginal)) {
+          // Find the original text with its actual whitespace
+          const regex = new RegExp(
+            normalizedOriginal.split(/\s+/).map(word => 
+              word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            ).join('\\s+'),
+            'i'
+          );
+          revisedText = revisedText.replace(regex, improvedClause);
+        }
+      }
     }
   }
   
-  // Create Word document
+  // Create Word document with better formatting
+  const paragraphElements: Paragraph[] = [];
+  
+  // Add header
+  paragraphElements.push(
+    new Paragraph({
+      text: "REVISED CONTRACT WITH RECOMMENDED IMPROVEMENTS",
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 }
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Generated on: ${new Date().toLocaleString()}`,
+          italics: true
+        })
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 }
+    }),
+    new Paragraph({
+      text: "DISCLAIMER",
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 200, after: 100 }
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: "This is an AI-generated document meant for review purposes only. Please consult with legal counsel before finalizing any contract. The revisions below implement the suggestions provided in your contract analysis.",
+          italics: true
+        })
+      ],
+      spacing: { after: 400 }
+    }),
+    new Paragraph({
+      text: "REVISED CONTRACT",
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 200, after: 200 }
+    })
+  );
+  
+  // Process contract content - preserve line breaks and structure
+  // Split by lines and create a paragraph for each non-empty line
+  // This preserves numbering, clause structure, and formatting
+  const lines = revisedText.split('\n');
+  
+  for (const line of lines) {
+    if (line.trim() === '') {
+      // Empty line - add spacing paragraph
+      paragraphElements.push(
+        new Paragraph({
+          text: '',
+          spacing: { after: 100 }
+        })
+      );
+    } else {
+      // Non-empty line - create paragraph
+      paragraphElements.push(
+        new Paragraph({
+          text: line.trim(),
+          spacing: { after: 100 }
+        })
+      );
+    }
+  }
+  
   const doc = new Document({
     sections: [{
       properties: {},
-      children: [
-        // Header
-        new Paragraph({
-          text: "REVISED CONTRACT WITH RECOMMENDED IMPROVEMENTS",
-          heading: HeadingLevel.HEADING_1,
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `Generated on: ${new Date().toLocaleString()}`,
-              italics: true
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 }
-        }),
-        new Paragraph({
-          text: "DISCLAIMER",
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 200, after: 100 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "This is an AI-generated document meant for review purposes only. Please consult with legal counsel before finalizing any contract. The revisions below implement the suggestions provided in your contract analysis.",
-              italics: true
-            })
-          ],
-          spacing: { after: 400 }
-        }),
-        new Paragraph({
-          text: "REVISED CONTRACT",
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 200, after: 200 }
-        }),
-        // Contract content - split by paragraphs
-        ...revisedText.split(/\n\s*\n/).map(para => 
-          new Paragraph({
-            text: para.trim(),
-            spacing: { after: 200 }
-          })
-        )
-      ]
+      children: paragraphElements
     }]
   });
   

@@ -430,6 +430,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get PDF analysis report
+  app.get("/api/document/:documentId/pdf-report", async (req: Request, res: Response) => {
+    try {
+      const { generateAnalysisReport } = await import("./pdfGenerator");
+      const documentId = parseInt(req.params.documentId);
+      
+      if (isNaN(documentId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+      
+      // Get the analysis results
+      const analysisResult = await storage.getAnalysisResultByDocumentId(documentId);
+      if (!analysisResult) {
+        return res.status(404).json({ message: "Analysis results not found" });
+      }
+      
+      // Get party info
+      const document = await storage.getDocument(documentId);
+      const partyInfo = document ? {
+        userPartyType: document.userPartyType,
+        party1Name: document.party1Name,
+        party2Name: document.party2Name,
+        userSelectedParty: document.userSelectedParty
+      } : null;
+      
+      // Generate the PDF report
+      const pdfBuffer = await generateAnalysisReport(
+        analysisResult.negotiationPoints as any,
+        partyInfo,
+        documentId
+      );
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="contract_analysis_report_${documentId}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Error generating PDF report:", error);
+      res.status(500).json({ message: error.message || "Failed to generate PDF report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
