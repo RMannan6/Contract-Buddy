@@ -185,6 +185,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update party information endpoint
+  app.post("/api/document/:documentId/party-info", async (req: Request, res: Response) => {
+    try {
+      const documentId = parseInt(req.params.documentId);
+      
+      if (isNaN(documentId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      // Validate request body
+      const { PartyInfoSchema } = await import("@shared/schema");
+      const partyInfo = PartyInfoSchema.parse(req.body);
+
+      // Update document with party information
+      const updatedDocument = await storage.updateDocumentPartyInfo(documentId, partyInfo);
+      
+      if (!updatedDocument) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      res.json({ 
+        documentId, 
+        userPartyType: updatedDocument.userPartyType,
+        draftingPartyName: updatedDocument.draftingPartyName,
+        userEntityName: updatedDocument.userEntityName
+      });
+    } catch (error) {
+      console.error("Party info update error:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error updating party info" });
+    }
+  });
+
+  // Extract drafting party from document
+  app.post("/api/document/:documentId/extract-party", async (req: Request, res: Response) => {
+    try {
+      const { extractDraftingParty } = await import("./party-extraction");
+      const documentId = parseInt(req.params.documentId);
+      
+      if (isNaN(documentId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Extract the drafting party name from contract text
+      const result = await extractDraftingParty(document.content);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Party extraction error:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error extracting party info" });
+    }
+  });
+
   // Analyze contract endpoint
   app.post("/api/analyze/:documentId", async (req: Request, res: Response) => {
     try {
