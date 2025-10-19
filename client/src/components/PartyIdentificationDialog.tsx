@@ -123,27 +123,27 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]" data-testid="dialog-party-identification">
+      <DialogContent className="sm:max-w-[400px]" data-testid="dialog-party-identification">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Identify Your Role</DialogTitle>
-          <DialogDescription className="text-base">
+          <DialogTitle className="text-xl">Identify Your Role</DialogTitle>
+          <DialogDescription className="text-sm">
             Help us personalize your contract analysis by telling us who you are in this agreement.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-3">
           {isExtracting ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-slate-600">Detecting contract parties...</span>
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-sm text-slate-600">Detecting parties...</span>
             </div>
           ) : (
             <>
               {/* Step 1: Which party are you? */}
               {(party1Name || party2Name) && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label className="text-base font-semibold text-slate-900">
+                    <Label className="text-sm font-semibold text-slate-900">
                       1. Which party do you represent?
                     </Label>
                     {extractionContext && (
@@ -153,21 +153,21 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
                   
                   <RadioGroup value={selectedParty || ""} onValueChange={(value) => setSelectedParty(value as "party1" | "party2")} data-testid="radio-selected-party">
                     {party1Name && (
-                      <div className="flex items-center space-x-3 border border-slate-200 rounded-lg p-4 hover:bg-slate-50 cursor-pointer">
+                      <div className="flex items-center space-x-2 border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer">
                         <RadioGroupItem value="party1" id="party1" data-testid="radio-party1" />
-                        <Label htmlFor="party1" className="flex-1 cursor-pointer text-base">
+                        <Label htmlFor="party1" className="flex-1 cursor-pointer text-sm">
                           <span className="font-medium text-slate-900">{party1Name}</span>
-                          <span className="text-sm text-slate-500 block mt-1">First party listed in the contract</span>
+                          <span className="text-xs text-slate-500 block mt-0.5">First party</span>
                         </Label>
                       </div>
                     )}
                     
                     {party2Name && (
-                      <div className="flex items-center space-x-3 border border-slate-200 rounded-lg p-4 hover:bg-slate-50 cursor-pointer">
+                      <div className="flex items-center space-x-2 border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer">
                         <RadioGroupItem value="party2" id="party2" data-testid="radio-party2" />
-                        <Label htmlFor="party2" className="flex-1 cursor-pointer text-base">
+                        <Label htmlFor="party2" className="flex-1 cursor-pointer text-sm">
                           <span className="font-medium text-slate-900">{party2Name}</span>
-                          <span className="text-sm text-slate-500 block mt-1">Second party listed in the contract</span>
+                          <span className="text-xs text-slate-500 block mt-0.5">Second party</span>
                         </Label>
                       </div>
                     )}
@@ -176,36 +176,30 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
               )}
 
               {/* Step 2: Drafting or adverse party? */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <Label className="text-base font-semibold text-slate-900">
-                    2. Are you the drafting party or the adverse party?
+                  <Label className="text-sm font-semibold text-slate-900">
+                    2. Your role in this contract?
                   </Label>
-                  <p className="text-sm text-slate-500 mt-1">
-                    This helps us tailor our recommendations to your specific situation
+                  <p className="text-xs text-slate-500 mt-1">
+                    Helps us tailor recommendations
                   </p>
                 </div>
                 
                 <RadioGroup value={partyType || ""} onValueChange={(value) => setPartyType(value as "drafting" | "adverse")} data-testid="radio-party-type">
-                  <div className="flex items-center space-x-3 border border-slate-200 rounded-lg p-4 hover:bg-slate-50 cursor-pointer">
+                  <div className="flex items-center space-x-2 border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer">
                     <RadioGroupItem value="drafting" id="drafting" data-testid="radio-drafting" />
                     <Label htmlFor="drafting" className="flex-1 cursor-pointer">
-                      <span className="font-medium text-slate-900 block">Drafting Party</span>
-                      <span className="text-sm text-slate-600">You or your organization wrote this contract</span>
-                      <span className="text-xs text-slate-500 block mt-1">
-                        We'll focus on clarity, fairness, and enforceability
-                      </span>
+                      <span className="font-medium text-slate-900 block text-sm">Drafting Party</span>
+                      <span className="text-xs text-slate-600">You wrote this contract</span>
                     </Label>
                   </div>
                   
-                  <div className="flex items-center space-x-3 border border-slate-200 rounded-lg p-4 hover:bg-slate-50 cursor-pointer">
+                  <div className="flex items-center space-x-2 border border-slate-200 rounded-lg p-3 hover:bg-slate-50 cursor-pointer">
                     <RadioGroupItem value="adverse" id="adverse" data-testid="radio-adverse" />
                     <Label htmlFor="adverse" className="flex-1 cursor-pointer">
-                      <span className="font-medium text-slate-900 block">Adverse Party</span>
-                      <span className="text-sm text-slate-600">You're reviewing a contract drafted by the other party</span>
-                      <span className="text-xs text-slate-500 block mt-1">
-                        We'll focus on risk mitigation and protective language
-                      </span>
+                      <span className="font-medium text-slate-900 block text-sm">Adverse Party</span>
+                      <span className="text-xs text-slate-600">Reviewing other party's contract</span>
                     </Label>
                   </div>
                 </RadioGroup>
@@ -213,8 +207,8 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
 
               {/* Summary */}
               {selectedParty && partyType && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-blue-900">
                     <strong>Summary:</strong> You are <strong>{getUserSelectedPartyName()}</strong> (the {partyType} party) 
                     {getOtherPartyName() && <> negotiating with <strong>{getOtherPartyName()}</strong></>}.
                   </p>
@@ -224,12 +218,13 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
           )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex justify-end gap-2 pt-3">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
             data-testid="button-cancel"
+            size="sm"
           >
             Cancel
           </Button>
@@ -237,8 +232,9 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
             onClick={handleSubmit}
             disabled={isSubmitting || isExtracting}
             data-testid="button-continue"
+            size="sm"
           >
-            {isSubmitting ? "Saving..." : "Continue to Analysis"}
+            {isSubmitting ? "Saving..." : "Continue"}
           </Button>
         </div>
       </DialogContent>
