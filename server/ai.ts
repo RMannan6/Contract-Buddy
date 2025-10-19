@@ -127,9 +127,9 @@ async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<Negoti
       // Create prompt for the LLM
       const prompt = createAnalysisPrompt(matchedClauses);
       
-      // Call the LLM using GPT-5 for enhanced contract analysis
+      // Call the LLM using GPT-3.5-turbo for cost-effective contract analysis
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",

@@ -49,7 +49,7 @@ Preferred communication style: Simple, everyday language.
 **AI Processing**:
 - **Snowflake Document AI Model** (`CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY`) for document parsing using PREDICT function with GET_PRESIGNED_URL
 - Top 5 clause selection based on risk priority (limitation_of_liability, indemnification, intellectual_property, termination, payment_terms)
-- OpenAI integration for clause analysis and negotiation recommendations (with fallback when quota exceeded)
+- **OpenAI GPT-3.5-turbo** for clause analysis and negotiation recommendations (with fallback when quota exceeded)
 - Contract comparison against gold standard clauses using semantic similarity
 - LLM-based generation of negotiation points and recommendations
 
