@@ -16,7 +16,8 @@ const openai = new OpenAI({
 export async function analyzeContract(
   document: Document,
   clauses: Clause[],
-  goldStandardClauses: GoldStandardClause[]
+  goldStandardClauses: GoldStandardClause[],
+  partyInfo?: { userPartyType?: string | null; draftingPartyName?: string | null; userEntityName?: string | null }
 ): Promise<{ negotiationPoints: NegotiationPoint[] }> {
   try {
     // 1. Generate embeddings for the clauses
@@ -25,8 +26,8 @@ export async function analyzeContract(
     // 2. Compare with gold standard clauses and find the most relevant ones
     const matchedClauses = findMatchingClauses(clauses, clauseEmbeddings, goldStandardClauses);
     
-    // 3. Generate analysis and recommendations using the LLM
-    const negotiationPoints = await generateAnalysis(matchedClauses);
+    // 3. Generate analysis and recommendations using the LLM, personalized for party type
+    const negotiationPoints = await generateAnalysis(matchedClauses, partyInfo);
     
     return { negotiationPoints };
   } catch (error) {
@@ -130,7 +131,10 @@ function findMatchingClauses(
 }
 
 // Generate analysis and recommendations
-async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<NegotiationPoint[]> {
+async function generateAnalysis(
+  matchedClauses: MatchedClause[], 
+  partyInfo?: { userPartyType?: string | null; draftingPartyName?: string | null; userEntityName?: string | null }
+): Promise<NegotiationPoint[]> {
   try {
     // If no matched clauses, return empty but log warning
     if (matchedClauses.length === 0) {
@@ -146,8 +150,8 @@ async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<Negoti
     }
     
     try {
-      // Create prompt for the LLM
-      const prompt = createAnalysisPrompt(matchedClauses);
+      // Create prompt for the LLM, personalized for party type
+      const prompt = createAnalysisPrompt(matchedClauses, partyInfo);
       
       // Call the LLM using GPT-4 for advanced contract analysis
       // Note: response_format json_object may not be supported by all AIML models
@@ -196,13 +200,38 @@ async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<Negoti
 }
 
 // Create prompt for the LLM
-function createAnalysisPrompt(matchedClauses: MatchedClause[]): string {
-  let prompt = `You are a contract attorney helping a customer improve their contract clauses. 
+function createAnalysisPrompt(
+  matchedClauses: MatchedClause[], 
+  partyInfo?: { userPartyType?: string | null; draftingPartyName?: string | null; userEntityName?: string | null }
+): string {
+  // Determine the perspective based on party type
+  const isDraftingParty = partyInfo?.userPartyType === 'drafting';
+  const isAdverseParty = partyInfo?.userPartyType === 'adverse';
+  
+  // Define party-specific guidance
+  let partyContext: string;
+  let roleDescription: string;
+  
+  if (isDraftingParty) {
+    roleDescription = 'helping a client who drafted this contract';
+    partyContext = 'You are helping the DRAFTING PARTY (the party who wrote this contract). Focus on ensuring clarity, fairness, and mutual benefits while protecting their interests. Suggest improvements that make the contract more balanced and enforceable.';
+  } else if (isAdverseParty) {
+    roleDescription = 'helping a client who is reviewing a contract drafted by the other party';
+    partyContext = 'You are helping the ADVERSE PARTY (the party reviewing a contract drafted by someone else). Focus on risk mitigation, protective language, and negotiation strategies to better protect their interests against potentially one-sided terms.';
+  } else {
+    // Neutral fallback for legacy documents or when party type is not specified
+    roleDescription = 'helping a client review this contract';
+    partyContext = 'Provide balanced analysis focusing on both risk mitigation and clarity. Identify potential issues and suggest improvements that protect the client\'s interests while maintaining a fair agreement.';
+  }
+
+  let prompt = `You are a contract attorney ${roleDescription}. 
+
+${partyContext}
 
 For each clause below:
-1. Identify the risk level (high/medium/low)
-2. Explain in plain English why this clause matters and what problems it could cause
-3. Write a COMPLETE REPLACEMENT clause that maintains the same purpose but with better terms that protect the customer
+1. Identify the risk level (high/medium/low) ${isDraftingParty ? 'for potential enforceability issues or unfairness' : 'for the client\'s exposure'}
+2. Explain in plain English why this clause matters and what problems it could cause ${isDraftingParty ? 'from a drafting perspective' : 'from a protective standpoint'}
+3. Write a COMPLETE REPLACEMENT clause that maintains the same purpose but with ${isDraftingParty ? 'clearer, more balanced terms' : 'better terms that protect the client'}
 
 CRITICAL: The "suggestion" field MUST contain the ENTIRE rewritten clause - a full, legal-quality replacement text that could be inserted into the contract. NOT advice, NOT a summary - an actual complete clause.
 
@@ -214,7 +243,7 @@ Respond with ONLY a JSON object (no markdown, no code blocks) in this exact form
     {
       "title": "Brief title for the clause type",
       "originalClause": "The original clause text",
-      "explanation": "Plain English explanation of why this clause is risky and what could go wrong",
+      "explanation": "Plain English explanation of why this clause is ${isDraftingParty ? 'problematic or unclear' : 'risky'} and what could go wrong",
       "suggestion": "COMPLETE REWRITTEN CLAUSE with all details, conditions, and protections",
       "riskLevel": "high|medium|low"
     }

@@ -294,8 +294,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get gold standard clauses for comparison
       const goldStandardClauses = await storage.getAllGoldStandardClauses();
       
-      // Analyze the contract
-      const analysisResults = await analyzeContract(document, clauses, goldStandardClauses);
+      // Prepare party information
+      const partyInfo = {
+        userPartyType: document.userPartyType,
+        draftingPartyName: document.draftingPartyName,
+        userEntityName: document.userEntityName
+      };
+      
+      // Analyze the contract with personalized recommendations
+      const analysisResults = await analyzeContract(document, clauses, goldStandardClauses, partyInfo);
       
       // Store the analysis results
       await storage.createAnalysisResult({
