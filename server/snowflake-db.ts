@@ -126,18 +126,17 @@ class SnowflakeConnection {
     }
 
     return new Promise((resolve, reject) => {
-      // Use parameterized query to prevent SQL injection
-      // GET_PRESIGNED_URL takes the full stage path as first argument
+      // Since we've validated stageFilePath with strict regex, we can safely use it in the SQL
+      // GET_PRESIGNED_URL syntax: GET_PRESIGNED_URL(@stage_name, 'file_path', expiration_seconds)
       const sqlText = `
         SELECT "${this.config.database}"."${this.config.schema}"."${modelName}" ! PREDICT(
-          GET_PRESIGNED_URL(@${stageName}, ?, 360),
+          GET_PRESIGNED_URL(@${stageName}, '${stageFilePath}', 360),
           2
         ) AS prediction
       `;
 
       conn.execute({
         sqlText,
-        binds: [stageFilePath],
         complete: (err, stmt, rows) => {
           if (err) {
             console.error('Failed to execute Document AI prediction:', err);
