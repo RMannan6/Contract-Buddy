@@ -100,14 +100,6 @@ export async function generateRevisedContractWithChanges(
 ): Promise<Buffer> {
   // Only use the top negotiation points
   const topPoints = negotiationPoints.slice(0, 5);
-  const pointMap = new Map<string, NegotiationPoint>();
-  
-  // Create a map for quick lookup
-  for (const point of topPoints) {
-    if (point.originalClause) {
-      pointMap.set(point.originalClause, point);
-    }
-  }
   
   const paragraphElements: Paragraph[] = [];
   
@@ -144,112 +136,158 @@ export async function generateRevisedContractWithChanges(
       spacing: { after: 400 }
     }),
     new Paragraph({
-      text: "CONTRACT WITH TRACKED CHANGES",
+      text: "ORIGINAL CONTRACT",
       heading: HeadingLevel.HEADING_2,
       spacing: { before: 200, after: 200 }
     })
   );
   
-  // Process the contract text paragraph by paragraph
-  const paragraphs = originalText.split(/\n\s*\n/);
+  // Add the original contract text
+  const originalParagraphs = originalText.split(/\n\s*\n/);
+  for (const para of originalParagraphs) {
+    if (para.trim()) {
+      paragraphElements.push(
+        new Paragraph({
+          text: para.trim(),
+          spacing: { after: 200 }
+        })
+      );
+    }
+  }
   
-  for (const paragraph of paragraphs) {
-    let hasChange = false;
-    let matchedPoint: NegotiationPoint | undefined;
-    let originalClauseText = '';
+  // Add tracked changes section
+  paragraphElements.push(
+    new Paragraph({
+      text: "SUGGESTED CHANGES WITH EXPLANATIONS",
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 400, after: 200 }
+    })
+  );
+  
+  // Process each negotiation point
+  for (let i = 0; i < topPoints.length; i++) {
+    const point = topPoints[i];
     
-    // Check if this paragraph contains any of the analyzed clauses
-    for (const [original, point] of Array.from(pointMap.entries())) {
-      if (paragraph.includes(original)) {
-        hasChange = true;
-        matchedPoint = point;
-        originalClauseText = original;
-        break;
-      }
+    // Skip if missing essential data
+    if (!point.originalClause || !point.suggestion || !point.explanation) {
+      continue;
     }
     
-    if (hasChange && matchedPoint) {
-      // Show removed text with strikethrough
+    // Add change number
+    paragraphElements.push(
+      new Paragraph({
+        text: `CHANGE ${i + 1}: ${point.title || 'Contract Provision'}`,
+        heading: HeadingLevel.HEADING_3,
+        spacing: { before: 300, after: 100 }
+      })
+    );
+    
+    // Add risk level
+    const riskColor = point.riskLevel === 'high' ? 'FF0000' : 
+                     point.riskLevel === 'medium' ? 'FFA500' : '008000';
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "RISK LEVEL: ",
+            bold: true
+          }),
+          new TextRun({
+            text: point.riskLevel.toUpperCase(),
+            bold: true,
+            color: riskColor
+          })
+        ],
+        spacing: { after: 200 }
+      })
+    );
+    
+    // Show removed text with strikethrough
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "ORIGINAL (TO BE REMOVED): ",
+            bold: true,
+            color: "990000"
+          })
+        ],
+        spacing: { after: 50 }
+      })
+    );
+    
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: point.originalClause,
+            strike: true,
+            color: "990000"
+          })
+        ],
+        spacing: { after: 200 }
+      })
+    );
+    
+    // Show added text with highlight
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "SUGGESTED (TO BE ADDED): ",
+            bold: true,
+            color: "006600"
+          })
+        ],
+        spacing: { after: 50 }
+      })
+    );
+    
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: point.suggestion,
+            color: "006600",
+            highlight: "yellow"
+          })
+        ],
+        spacing: { after: 200 }
+      })
+    );
+    
+    // Add explanation
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "WHY THIS MATTERS: ",
+            bold: true,
+            italics: true
+          })
+        ],
+        spacing: { after: 50 }
+      })
+    );
+    
+    paragraphElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: point.explanation,
+            italics: true
+          })
+        ],
+        spacing: { after: 300 }
+      })
+    );
+    
+    // Add separator
+    if (i < topPoints.length - 1) {
       paragraphElements.push(
         new Paragraph({
-          children: [
-            new TextRun({
-              text: "ORIGINAL (REMOVED): ",
-              bold: true,
-              color: "990000"
-            }),
-            new TextRun({
-              text: originalClauseText,
-              strike: true,
-              color: "990000"
-            })
-          ],
-          spacing: { after: 100 }
-        })
-      );
-      
-      // Show added text with highlight
-      paragraphElements.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "SUGGESTED (ADDED): ",
-              bold: true,
-              color: "006600"
-            }),
-            new TextRun({
-              text: matchedPoint.suggestion,
-              color: "006600",
-              highlight: "yellow"
-            })
-          ],
-          spacing: { after: 100 }
-        })
-      );
-      
-      // Add explanation
-      paragraphElements.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "WHY THIS MATTERS: ",
-              bold: true,
-              italics: true
-            }),
-            new TextRun({
-              text: matchedPoint.explanation,
-              italics: true
-            })
-          ],
-          spacing: { after: 100 }
-        })
-      );
-      
-      // Add risk level
-      const riskColor = matchedPoint.riskLevel === 'high' ? 'FF0000' : 
-                       matchedPoint.riskLevel === 'medium' ? 'FFA500' : '008000';
-      paragraphElements.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "RISK LEVEL: ",
-              bold: true
-            }),
-            new TextRun({
-              text: matchedPoint.riskLevel.toUpperCase(),
-              bold: true,
-              color: riskColor
-            })
-          ],
-          spacing: { after: 300 }
-        })
-      );
-    } else {
-      // Regular paragraph without changes
-      paragraphElements.push(
-        new Paragraph({
-          text: paragraph.trim(),
-          spacing: { after: 200 }
+          text: "─".repeat(80),
+          spacing: { before: 100, after: 100 }
         })
       );
     }
