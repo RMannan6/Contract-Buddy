@@ -173,3 +173,23 @@ Preferred communication style: Simple, everyday language.
   - Warranty (performance standards with remedies)
   - Governing Law (customer-favorable jurisdiction)
 - "Suggestion" field now contains actual replacement text that can be used directly in contracts
+
+### Document AI and OCR Improvements (October 19, 2025)
+- **Made Document AI optional**: Added ENABLE_DOCUMENT_AI environment variable flag
+  - When not set or false, application skips Document AI and uses native OCR directly
+  - Prevents errors when Document AI model is not deployed in Snowflake
+  - Provides graceful fallback with clear logging
+- **Fixed PDF processing**: Removed invalid Vision API calls for PDFs
+  - PDFs now use native PDF.js extraction exclusively
+  - Vision API (GPT-4o) reserved for images only (JPG, PNG)
+  - Eliminated 400 errors from attempting to send PDFs to vision endpoint
+- **Configured PDF.js worker**: Set `pdfjs.GlobalWorkerOptions.workerSrc`
+  - Fixed "Invalid PDF structure" errors in native PDF extraction
+  - Enabled reliable fallback OCR for all PDF documents
+- **Improved error handling**: Better logging and graceful degradation
+  - Document AI failures log concise error messages instead of full stack traces
+  - Clear indication of which processing path is being used (Document AI vs OCR)
+- **UI scrollable clause boxes**: All clause containers support full content display
+  - Original clause, suggested clause, and explanation boxes have max-height and scrolling
+  - Preserves formatting with whitespace-pre-wrap and leading-relaxed
+  - Shows complete clause text regardless of length
