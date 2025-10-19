@@ -160,20 +160,20 @@ export default function AnalysisResults({
                 <div className="px-6 py-4">
                   <div className="mb-4">
                     <h5 className="text-sm font-medium text-slate-700 mb-2">Original Clause:</h5>
-                    <div className="p-3 bg-slate-50 rounded border border-slate-200 text-sm">
-                      <p className="clause-highlight">{point.originalClause}</p>
+                    <div className="p-3 bg-slate-50 rounded border border-slate-200 text-sm max-h-64 overflow-y-auto">
+                      <p className="whitespace-pre-wrap leading-relaxed">{point.originalClause}</p>
                     </div>
                   </div>
                   <div className="mb-4">
                     <h5 className="text-sm font-medium text-slate-700 mb-2">Recommended Change:</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-sm">
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-sm max-h-64 overflow-y-auto">
                         <p className="font-semibold text-blue-900 mb-2">Suggested Clause:</p>
-                        <p className="text-slate-700 leading-relaxed">{point.suggestion}</p>
+                        <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{point.suggestion}</p>
                       </div>
-                      <div className="p-3 bg-green-50 rounded border border-green-200 text-sm">
+                      <div className="p-3 bg-green-50 rounded border border-green-200 text-sm max-h-64 overflow-y-auto">
                         <p className="font-semibold text-green-900 mb-2">Why This Change:</p>
-                        <p className="text-green-800 leading-relaxed">{point.explanation}</p>
+                        <p className="text-green-800 leading-relaxed whitespace-pre-wrap">{point.explanation}</p>
                       </div>
                     </div>
                   </div>
