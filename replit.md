@@ -150,29 +150,33 @@ Preferred communication style: Simple, everyday language.
 - Local file paths validated to be in tmp directory
 - No user-provided filenames used in SQL statements
 
-### AIML API Integration with GPT-5 (October 19, 2025)
+### AIML API Integration with GPT-4o (October 19, 2025)
 - Integrated AIML API gateway for unified access to 300+ AI models
 - Configured OpenAI SDK to use AIML API base URL (https://api.aimlapi.com/v1)
-- **Using GPT-5** through AIML API for advanced contract analysis
+- **Using GPT-4o** through AIML API for advanced contract analysis
 - Updated prompts to generate **actual rewritten clause text** instead of generic advice
 - Each "suggestion" field now contains complete replacement clause language
-- Fallback system also provides rewritten clauses for all top 5 clause types
 - Automatic fallback to OPENAI_API_KEY if AIML_API_KEY not available
 - Provides access to models from OpenAI, Anthropic, Google, and other providers
 
 ### Clause Rewriting Implementation (October 19, 2025)
-- Changed GPT model from GPT-3.5-turbo to **GPT-5** for better quality recommendations
+- Using GPT-4o model for contract analysis (corrected from non-existent "gpt-5")
+- Removed unsupported JSON mode parameter from API calls
 - Updated all analysis prompts to explicitly request complete rewritten clause text
-- Fallback analysis now provides actual clause rewrites for:
-  - Limitation of Liability (includes carve-outs for gross negligence and data breaches)
-  - Termination (balanced notice periods and transition assistance)
-  - Intellectual Property (customer ownership of custom work)
-  - Indemnification (mutual obligations with proper protections)
-  - Payment Terms (30-day terms with dispute provisions)
-  - Confidentiality (balanced obligations with clear exclusions)
-  - Warranty (performance standards with remedies)
-  - Governing Law (customer-favorable jurisdiction)
 - "Suggestion" field now contains actual replacement text that can be used directly in contracts
+
+### Unique Fallback Suggestions (October 19, 2025)
+- Implemented `createCustomSuggestion()` function to generate unique suggestions per clause
+- Each clause type now gets a distinct suggestion based on its gold standard clause from database
+- Fallback suggestions are no longer hardcoded - they pull from gold_standard_clauses table
+- Each suggestion is prefixed with "[Suggested Revision]: " followed by the gold standard text
+- Gold standard clauses vary by type, ensuring each analyzed clause receives unique recommendations:
+  - limitation_of_liability: "Neither party shall be liable for any indirect, incidental, special, consequential or punitive damages."
+  - termination: "Either party may terminate this Agreement with sixty (60) days written notice."
+  - intellectual_property: "Each party retains all rights to its pre-existing intellectual property. Any jointly developed IP shall be jointly owned."
+  - indemnification: "Each party shall indemnify the other for claims arising from its own negligence or willful misconduct."
+  - payment_terms: "Payment shall be due within thirty (30) days of invoice date."
+- This approach eliminates repeated generic advice and provides clause-specific recommendations
 
 ### Document AI and OCR Improvements (October 19, 2025)
 - **Made Document AI optional**: Added ENABLE_DOCUMENT_AI environment variable flag
