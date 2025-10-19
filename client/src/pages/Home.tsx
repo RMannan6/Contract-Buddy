@@ -163,6 +163,14 @@ export default function Home() {
     setShowPartyDialog(false);
   };
 
+  const handlePartyDialogClose = (open: boolean) => {
+    setShowPartyDialog(open);
+    // If dialog is being closed (open=false), reset the upload state
+    if (!open) {
+      resetUploadState();
+    }
+  };
+
   return (
     <div className="bg-slate-50 font-sans antialiased text-slate-700 min-h-screen">
       <Header />
@@ -170,7 +178,7 @@ export default function Home() {
       {currentDocumentId && (
         <PartyIdentificationDialog
           open={showPartyDialog}
-          onOpenChange={setShowPartyDialog}
+          onOpenChange={handlePartyDialogClose}
           documentId={currentDocumentId}
           onComplete={handlePartyDialogComplete}
         />
