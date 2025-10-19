@@ -42,14 +42,16 @@ Preferred communication style: Simple, everyday language.
 **File Processing**:
 - Multer for handling multipart file uploads with 10MB size limit
 - Support for PDF, DOCX, JPG, and PNG formats
-- OCR text extraction for different file types
-- Clause extraction and categorization
+- **Snowflake Document AI** for primary document parsing and clause extraction
+- Fallback to native PDF/DOCX text extraction when Document AI unavailable
+- Automatic cleanup of staged files after processing
 
 **AI Processing**:
-- OpenAI integration for text analysis and embeddings generation
+- **Snowflake Document AI Model** (`CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY`) for document parsing using PREDICT function with GET_PRESIGNED_URL
+- Top 5 clause selection based on risk priority (limitation_of_liability, indemnification, intellectual_property, termination, payment_terms)
+- OpenAI integration for clause analysis and negotiation recommendations (with fallback when quota exceeded)
 - Contract comparison against gold standard clauses using semantic similarity
 - LLM-based generation of negotiation points and recommendations
-- Mock embeddings system for development/demo purposes
 
 **Development Features**:
 - Vite middleware integration for HMR in development
@@ -59,25 +61,38 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 
-**Database**: PostgreSQL via Neon serverless database
+**Database**: Snowflake cloud data warehouse
 
-**ORM**: Drizzle ORM with the following schema:
+**Connection**: snowflake-sdk for direct SQL execution and data operations
+
+**Snowflake Stage**: CONTRACT_UPLOADS stage for temporary document storage during Document AI processing
 
 **Tables**:
 - `users` - User accounts (currently not actively used for authentication)
-- `documents` - Uploaded contract files with expiration timestamps
-- `clauses` - Extracted clauses from contracts with type, risk level, and position
+- `documents` - Uploaded contract files with expiration timestamps and full text content
+- `clauses` - Top 5 extracted clauses from contracts with type, risk level, and position
 - `gold_standard_clauses` - Reference clauses for comparison with category and risk ratings
 - `analysis_results` - Stored analysis results linking documents to their negotiation points
+
+**Sequences**:
+- Explicit named sequences (seq_documents, seq_clauses, seq_analysis_results, etc.) for reliable ID generation
+- Replaces Snowflake AUTOINCREMENT for predictable ID management
 
 **Data Lifecycle**:
 - Documents automatically expire after 24 hours
 - Periodic cleanup job removes expired documents
-- Analysis results stored as JSONB for flexible negotiation point structure
+- Staged files in CONTRACT_UPLOADS are automatically removed after Document AI processing
+- Analysis results stored as TEXT with JSON.stringify() for compatibility
 
 **Connection Management**: 
-- Neon serverless connection pooling with WebSocket support
-- Database credentials via `DATABASE_URL` environment variable
+- Snowflake connection pooling with warehouse: COMPUTE_WH
+- Database credentials via SNOWFLAKE_* environment variables
+
+**Security**:
+- File paths sanitized using MIME type-derived extensions only
+- Strict regex validation for stage file paths (doc_\d+\.(pdf|docx|jpg|png|bin))
+- Parameterized queries for PREDICT function calls
+- No user-controlled data in SQL statements
 
 ### External Dependencies
 
@@ -86,18 +101,18 @@ Preferred communication style: Simple, everyday language.
 - Anthropic Claude SDK (installed but not actively used in current implementation)
 
 **Document Processing**:
-- mammoth - DOCX text extraction
-- pdfjs-dist - PDF parsing and text extraction
-- OpenAI Vision API - Image-based text extraction for JPG/PNG files
+- **Snowflake Document AI** - Primary document parsing and clause extraction
+- mammoth - DOCX text extraction (fallback)
+- pdfjs-dist/legacy - PDF parsing and text extraction (fallback for Node.js environment)
+- OpenAI Vision API - Image-based text extraction for JPG/PNG files (fallback)
 
 **File Handling**:
 - multer - Multipart form data and file upload processing
 - File system operations for temporary file storage
 
 **Database**:
-- @neondatabase/serverless - PostgreSQL connection with serverless optimizations
-- drizzle-orm - Type-safe database queries and schema management
-- connect-pg-simple - Session store (configured but sessions not actively used)
+- snowflake-sdk - Snowflake database connection and operations
+- Direct SQL execution for database operations (no ORM)
 
 **Development Tools**:
 - @replit/vite-plugin-runtime-error-modal - Development error overlay
@@ -107,4 +122,28 @@ Preferred communication style: Simple, everyday language.
 **Build Tools**:
 - esbuild - Server-side bundling for production
 - Vite - Frontend bundling and development server
-- drizzle-kit - Database migrations and schema management
+
+## Recent Changes (October 19, 2025)
+
+### Document AI Integration
+- Integrated Snowflake Document AI model (CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY) for document parsing
+- Replaced traditional OCR/text extraction with Document AI PREDICT function using GET_PRESIGNED_URL
+- Created CONTRACT_UPLOADS Snowflake stage for temporary document storage
+- Implemented automatic file cleanup after processing
+- Added comprehensive security hardening:
+  - MIME type-based file extensions (no user-controlled data)
+  - Strict regex validation for all file paths
+  - Parameterized queries for SQL injection prevention
+  - Sanitized temporary file naming using randomUUID only
+
+### Top 5 Clause Analysis
+- Modified analysis to select and analyze only the top 5 highest-priority clauses
+- Priority ranking: limitation_of_liability (1), indemnification (2), intellectual_property (3), termination (4), payment_terms (5)
+- Removed hardcoded fallback clauses - only analyzes clauses actually found in uploaded contracts
+
+### Security Improvements
+- Eliminated all SQL injection vulnerabilities in Document AI integration
+- File paths use only safe, controlled values (UUID + MIME extension)
+- Stage file paths validated with regex: `^doc_\d+\.(pdf|docx|jpg|png|bin)$`
+- Local file paths validated to be in tmp directory
+- No user-provided filenames used in SQL statements

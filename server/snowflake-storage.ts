@@ -188,6 +188,13 @@ export class SnowflakeStorage implements IStorage {
     } as Document;
   }
 
+  async updateDocumentContent(id: number, content: string): Promise<void> {
+    await snowflakeDb.execute(
+      `UPDATE documents SET content = ? WHERE id = ?`,
+      [content, id]
+    );
+  }
+
   async getAllDocuments(): Promise<Document[]> {
     const rows = await snowflakeDb.execute<any>(`SELECT * FROM documents ORDER BY UPLOADED_AT DESC`);
     

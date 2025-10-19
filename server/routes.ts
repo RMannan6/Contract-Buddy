@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { SnowflakeStorage } from "./snowflake-storage";
 import { fileUploadHandler } from "./ocr";
 import { analyzeContract } from "./ai";
+import { analyzeDocumentWithAI } from "./document-ai";
 
 // Use Snowflake storage
 const storage = new SnowflakeStorage();
@@ -75,33 +76,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Process the uploaded file (OCR and extraction)
-      const result = await fileUploadHandler(req.file);
+      // Get safe extension from MIME type
+      const mimeToExt: { [key: string]: string } = {
+        'application/pdf': '.pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'image/jpeg': '.jpg',
+        'image/png': '.png'
+      };
+      const safeExtension = mimeToExt[req.file.mimetype] || '.bin';
       
-      // Create document record with 24-hour expiration
+      // Save file to temporary location with safe filename (no user-provided data)
+      const tempFilePath = path.join(tmpDir, `${randomUUID()}${safeExtension}`);
+      fs.writeFileSync(tempFilePath, req.file.buffer);
+      
+      // Create document record first (we need the ID for stage file path)
       const expirationDate = new Date();
       expirationDate.setHours(expirationDate.getHours() + 24);
       
+      // Create placeholder document to get ID
       const document = await storage.createDocument({
         fileName: req.file.originalname,
         fileType: req.file.mimetype,
-        content: result.text,
+        content: 'Processing with Document AI...',
         expiresAt: expirationDate
       });
 
-      // Store extracted clauses
-      const extractedClauses = result.clauses;
-      for (let i = 0; i < extractedClauses.length; i++) {
-        await storage.createClause({
-          documentId: document.id,
-          content: extractedClauses[i].content,
-          type: extractedClauses[i].type || "unknown",
-          riskLevel: "pending",
-          position: i
-        });
+      try {
+        // Process with Snowflake Document AI
+        console.log(`Processing document ${document.id} with Snowflake Document AI...`);
+        const aiResult = await analyzeDocumentWithAI(tempFilePath, req.file.originalname, document.id, req.file.mimetype);
+        
+        // Update document with full text
+        await storage.updateDocumentContent(document.id, aiResult.fullText || 'Document processed');
+        
+        // Store the top 5 extracted clauses from Document AI
+        const extractedClauses = aiResult.clauses;
+        console.log(`Storing ${extractedClauses.length} clauses extracted by Document AI`);
+        
+        for (let i = 0; i < extractedClauses.length; i++) {
+          await storage.createClause({
+            documentId: document.id,
+            content: extractedClauses[i].content,
+            type: extractedClauses[i].type || "other",
+            riskLevel: extractedClauses[i].risk_level || "medium",
+            position: extractedClauses[i].position || i
+          });
+        }
+        
+        // Clean up temp file
+        fs.unlinkSync(tempFilePath);
+        
+        res.json({ documentId: document.id });
+      } catch (aiError) {
+        console.error("Document AI processing failed, falling back to traditional OCR:", aiError);
+        
+        // Fallback to traditional OCR if Document AI fails
+        const ocrResult = await fileUploadHandler(req.file);
+        
+        // Update document with OCR text
+        await storage.updateDocumentContent(document.id, ocrResult.text);
+        
+        // Store extracted clauses from OCR
+        const extractedClauses = ocrResult.clauses;
+        for (let i = 0; i < extractedClauses.length; i++) {
+          await storage.createClause({
+            documentId: document.id,
+            content: extractedClauses[i].content,
+            type: extractedClauses[i].type || "unknown",
+            riskLevel: "pending",
+            position: i
+          });
+        }
+        
+        // Clean up temp file
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+        
+        res.json({ documentId: document.id });
       }
-
-      res.json({ documentId: document.id });
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error during upload" });

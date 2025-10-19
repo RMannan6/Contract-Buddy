@@ -4,6 +4,10 @@ export async function initializeSnowflakeTables(): Promise<void> {
   try {
     console.log('Initializing Snowflake tables...');
     
+    // Create stage for document uploads (required for Document AI)
+    await snowflakeDb.execute(`CREATE STAGE IF NOT EXISTS CONTRACT_UPLOADS`);
+    console.log('Snowflake stage created/verified: CONTRACT_UPLOADS');
+    
     // Create explicit sequences for all tables (required for accessing NEXTVAL)
     await snowflakeDb.execute(`CREATE SEQUENCE IF NOT EXISTS seq_users START = 1 INCREMENT = 1`);
     await snowflakeDb.execute(`CREATE SEQUENCE IF NOT EXISTS seq_documents START = 1 INCREMENT = 1`);

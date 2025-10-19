@@ -80,6 +80,95 @@ class SnowflakeConnection {
     });
   }
 
+  async uploadFileToStage(
+    localFilePath: string,
+    stageName: string,
+    stageFilePath: string
+  ): Promise<void> {
+    const conn = await this.connect();
+
+    // Validate stageFilePath matches expected pattern to prevent injection
+    if (!/^doc_\d+\.(pdf|docx|jpg|png|bin)$/.test(stageFilePath)) {
+      throw new Error(`Invalid stage file path: ${stageFilePath}`);
+    }
+
+    // Validate localFilePath to prevent injection (must be in tmp dir)
+    if (!localFilePath.includes('/tmp/') && !localFilePath.includes('\\tmp\\')) {
+      throw new Error(`Invalid local file path: ${localFilePath}`);
+    }
+
+    return new Promise((resolve, reject) => {
+      conn.execute({
+        sqlText: `PUT file://${localFilePath} @${stageName}/${stageFilePath} AUTO_COMPRESS=FALSE OVERWRITE=TRUE`,
+        complete: (err, stmt, rows) => {
+          if (err) {
+            console.error('Failed to upload file to stage:', err);
+            reject(err);
+          } else {
+            console.log(`File uploaded successfully to @${stageName}/${stageFilePath}`);
+            resolve();
+          }
+        },
+      });
+    });
+  }
+
+  async predictWithDocumentAI(
+    stageName: string,
+    stageFilePath: string,
+    modelName: string = 'CONTRACTBUDDY'
+  ): Promise<any> {
+    const conn = await this.connect();
+
+    return new Promise((resolve, reject) => {
+      // Use parameterized query to prevent SQL injection
+      const sqlText = `
+        SELECT "${this.config.database}"."${this.config.schema}"."${modelName}" ! PREDICT(
+          GET_PRESIGNED_URL(@${stageName}, ?),
+          2
+        ) AS prediction
+      `;
+
+      conn.execute({
+        sqlText,
+        binds: [stageFilePath],
+        complete: (err, stmt, rows) => {
+          if (err) {
+            console.error('Failed to execute Document AI prediction:', err);
+            reject(err);
+          } else {
+            console.log('Document AI prediction completed successfully');
+            resolve(rows && rows.length > 0 ? rows[0] : null);
+          }
+        },
+      });
+    });
+  }
+
+  async removeFileFromStage(stageName: string, stageFilePath: string): Promise<void> {
+    const conn = await this.connect();
+
+    // Validate stageFilePath matches expected pattern to prevent injection
+    if (!/^doc_\d+\.(pdf|docx|jpg|png|bin)$/.test(stageFilePath)) {
+      throw new Error(`Invalid stage file path: ${stageFilePath}`);
+    }
+
+    return new Promise((resolve, reject) => {
+      conn.execute({
+        sqlText: `REMOVE @${stageName}/${stageFilePath}`,
+        complete: (err, stmt, rows) => {
+          if (err) {
+            console.error('Failed to remove file from stage:', err);
+            reject(err);
+          } else {
+            console.log(`File removed from stage: @${stageName}/${stageFilePath}`);
+            resolve();
+          }
+        },
+      });
+    });
+  }
+
   async destroy(): Promise<void> {
     if (this.connection) {
       return new Promise((resolve, reject) => {
