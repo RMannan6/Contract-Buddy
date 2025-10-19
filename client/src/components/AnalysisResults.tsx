@@ -165,17 +165,15 @@ export default function AnalysisResults({
                     </div>
                   </div>
                   <div className="mb-4">
-                    <h5 className="text-sm font-medium text-slate-700 mb-2">Why This Matters:</h5>
-                    <p className="text-sm text-slate-600">{point.explanation}</p>
-                  </div>
-                  <div className="mb-4">
                     <h5 className="text-sm font-medium text-slate-700 mb-2">Recommended Change:</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`p-3 rounded border text-sm ${getRiskBgColor(point.riskLevel as RiskLevel)} ${getRiskBorderColor(point.riskLevel as RiskLevel)}`}>
-                        <p>{point.originalClause}</p>
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-sm">
+                        <p className="font-semibold text-blue-900 mb-2">Suggested Clause:</p>
+                        <p className="text-slate-700 leading-relaxed">{point.suggestion}</p>
                       </div>
                       <div className="p-3 bg-green-50 rounded border border-green-200 text-sm">
-                        <p>{point.suggestion}</p>
+                        <p className="font-semibold text-green-900 mb-2">Why This Change:</p>
+                        <p className="text-green-800 leading-relaxed">{point.explanation}</p>
                       </div>
                     </div>
                   </div>
