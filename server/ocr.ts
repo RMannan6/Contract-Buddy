@@ -5,6 +5,13 @@ import path from "path";
 import { promisify } from "util";
 import OpenAI from "openai";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Configure PDF.js worker
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+pdfjs.GlobalWorkerOptions.workerSrc = path.join(__dirname, '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
 
 // Initialize OpenAI client with AIML API gateway (provides access to 300+ AI models)
 const openai = new OpenAI({ 
@@ -34,8 +41,8 @@ export async function fileUploadHandler(file: Express.Multer.File): Promise<File
     let extractedText = "";
     
     if (fileExt === '.pdf') {
-      // For PDFs, we'll use OpenAI to extract text
-      extractedText = await extractTextWithOpenAI(file.buffer, file.originalname);
+      // For PDFs, use native PDF extraction (Vision API doesn't support PDFs)
+      extractedText = await extractTextFromPDFNative(file.buffer);
     } else if (fileExt === '.docx') {
       extractedText = await extractTextFromDocx(file.buffer);
     } else if (['.jpg', '.jpeg', '.png'].includes(fileExt)) {

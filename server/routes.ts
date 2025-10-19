@@ -101,49 +101,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt: expirationDate
       });
 
+      // Check if Document AI is enabled (set ENABLE_DOCUMENT_AI=true if model is deployed)
+      const documentAIEnabled = process.env.ENABLE_DOCUMENT_AI === 'true';
+      
       try {
-        // Process with Snowflake Document AI
-        console.log(`Processing document ${document.id} with Snowflake Document AI...`);
-        const aiResult = await analyzeDocumentWithAI(tempFilePath, req.file.originalname, document.id, req.file.mimetype);
+        let extractedClauses: any[] = [];
+        let fullText = '';
+        
+        if (documentAIEnabled) {
+          // Process with Snowflake Document AI
+          console.log(`Processing document ${document.id} with Snowflake Document AI...`);
+          const aiResult = await analyzeDocumentWithAI(tempFilePath, req.file.originalname, document.id, req.file.mimetype);
+          fullText = aiResult.fullText || '';
+          extractedClauses = aiResult.clauses;
+          console.log(`Storing ${extractedClauses.length} clauses extracted by Document AI`);
+        } else {
+          // Use traditional OCR directly (Document AI not enabled)
+          console.log(`Processing document ${document.id} with OCR (Document AI disabled)`);
+          const ocrResult = await fileUploadHandler(req.file);
+          fullText = ocrResult.text;
+          extractedClauses = ocrResult.clauses;
+          console.log(`Storing ${extractedClauses.length} clauses extracted by OCR`);
+        }
         
         // Update document with full text
-        await storage.updateDocumentContent(document.id, aiResult.fullText || 'Document processed');
+        await storage.updateDocumentContent(document.id, fullText || 'Document processed');
         
-        // Store the top 5 extracted clauses from Document AI
-        const extractedClauses = aiResult.clauses;
-        console.log(`Storing ${extractedClauses.length} clauses extracted by Document AI`);
-        
+        // Store the extracted clauses
         for (let i = 0; i < extractedClauses.length; i++) {
           await storage.createClause({
             documentId: document.id,
             content: extractedClauses[i].content,
             type: extractedClauses[i].type || "other",
             riskLevel: extractedClauses[i].risk_level || "medium",
-            position: extractedClauses[i].position || i
-          });
-        }
-        
-        // Clean up temp file
-        fs.unlinkSync(tempFilePath);
-        
-        res.json({ documentId: document.id });
-      } catch (aiError) {
-        console.error("Document AI processing failed, falling back to traditional OCR:", aiError);
-        
-        // Fallback to traditional OCR if Document AI fails
-        const ocrResult = await fileUploadHandler(req.file);
-        
-        // Update document with OCR text
-        await storage.updateDocumentContent(document.id, ocrResult.text);
-        
-        // Store extracted clauses from OCR
-        const extractedClauses = ocrResult.clauses;
-        for (let i = 0; i < extractedClauses.length; i++) {
-          await storage.createClause({
-            documentId: document.id,
-            content: extractedClauses[i].content,
-            type: extractedClauses[i].type || "unknown",
-            riskLevel: "pending",
             position: i
           });
         }
@@ -154,6 +144,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         res.json({ documentId: document.id });
+      } catch (error) {
+        // If Document AI was enabled but failed, fall back to OCR
+        if (documentAIEnabled) {
+          console.log("Document AI failed, falling back to OCR");
+          console.log("Error:", (error as Error).message);
+          
+          try {
+            const ocrResult = await fileUploadHandler(req.file);
+            await storage.updateDocumentContent(document.id, ocrResult.text);
+            
+            const extractedClauses = ocrResult.clauses;
+            for (let i = 0; i < extractedClauses.length; i++) {
+              await storage.createClause({
+                documentId: document.id,
+                content: extractedClauses[i].content,
+                type: extractedClauses[i].type || "unknown",
+                riskLevel: "pending",
+                position: i
+              });
+            }
+            
+            if (fs.existsSync(tempFilePath)) {
+              fs.unlinkSync(tempFilePath);
+            }
+            
+            return res.json({ documentId: document.id });
+          } catch (fallbackError) {
+            console.error("Fallback OCR also failed:", fallbackError);
+            throw fallbackError;
+          }
+        }
+        
+        // If we get here, OCR failed and we need to propagate the error
+        throw error;
       }
     } catch (error) {
       console.error("Upload error:", error);

@@ -135,6 +135,11 @@ class SnowflakeConnection {
         ) AS prediction
       `;
 
+      console.log('Document AI SQL Query:', sqlText);
+      console.log('Stage Name:', stageName);
+      console.log('Stage File Path:', stageFilePath);
+      console.log('Model Name:', modelName);
+
       conn.execute({
         sqlText,
         complete: (err, stmt, rows) => {
