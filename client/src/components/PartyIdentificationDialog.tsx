@@ -73,16 +73,10 @@ export function PartyIdentificationDialog({ open, onOpenChange, documentId, onCo
 
     setIsSubmitting(true);
     try {
-      await apiRequest(`/api/document/${documentId}/party-info`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userPartyType: partyType,
-          draftingPartyName,
-          userEntityName: userEntityName || undefined,
-        }),
+      await apiRequest('POST', `/api/document/${documentId}/party-info`, {
+        userPartyType: partyType,
+        draftingPartyName,
+        userEntityName: userEntityName || undefined,
       });
 
       toast({

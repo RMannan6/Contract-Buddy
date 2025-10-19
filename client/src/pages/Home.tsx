@@ -6,6 +6,7 @@ import UploadSection from "@/components/UploadSection";
 import HowItWorks from "@/components/HowItWorks";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
+import { PartyIdentificationDialog } from "@/components/PartyIdentificationDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -15,6 +16,8 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState("Extracting text from document...");
+  const [showPartyDialog, setShowPartyDialog] = useState(false);
+  const [currentDocumentId, setCurrentDocumentId] = useState<number | null>(null);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -54,8 +57,9 @@ export default function Home() {
       
       const data = await response.json();
       
-      // Start analysis process
-      startAnalysis(data.documentId);
+      // Store document ID and show party identification dialog
+      setCurrentDocumentId(data.documentId);
+      setShowPartyDialog(true);
       
     } catch (error) {
       setIsUploading(false);
@@ -133,9 +137,24 @@ export default function Home() {
     }
   };
 
+  const handlePartyDialogComplete = () => {
+    if (currentDocumentId) {
+      startAnalysis(currentDocumentId);
+    }
+  };
+
   return (
     <div className="bg-slate-50 font-sans antialiased text-slate-700 min-h-screen">
       <Header />
+      
+      {currentDocumentId && (
+        <PartyIdentificationDialog
+          open={showPartyDialog}
+          onOpenChange={setShowPartyDialog}
+          documentId={currentDocumentId}
+          onComplete={handlePartyDialogComplete}
+        />
+      )}
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Alert Banner */}
