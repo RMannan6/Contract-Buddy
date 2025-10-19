@@ -165,18 +165,25 @@ Preferred communication style: Simple, everyday language.
 - Updated all analysis prompts to explicitly request complete rewritten clause text
 - "Suggestion" field now contains actual replacement text that can be used directly in contracts
 
-### Unique Fallback Suggestions (October 19, 2025)
-- Implemented `createCustomSuggestion()` function to generate unique suggestions per clause
-- Each clause type now gets a distinct suggestion based on its gold standard clause from database
-- Fallback suggestions are no longer hardcoded - they pull from gold_standard_clauses table
-- Each suggestion is prefixed with "[Suggested Revision]: " followed by the gold standard text
-- Gold standard clauses vary by type, ensuring each analyzed clause receives unique recommendations:
-  - limitation_of_liability: "Neither party shall be liable for any indirect, incidental, special, consequential or punitive damages."
-  - termination: "Either party may terminate this Agreement with sixty (60) days written notice."
-  - intellectual_property: "Each party retains all rights to its pre-existing intellectual property. Any jointly developed IP shall be jointly owned."
-  - indemnification: "Each party shall indemnify the other for claims arising from its own negligence or willful misconduct."
-  - payment_terms: "Payment shall be due within thirty (30) days of invoice date."
-- This approach eliminates repeated generic advice and provides clause-specific recommendations
+### Complete Clause Rewrites (October 19, 2025)
+- **Fixed JSON parsing**: Added logic to strip markdown code blocks (` ```json...``` `) from GPT-4o responses
+  - GPT-4o often wraps JSON responses in code fences, causing parsing failures
+  - Now extracts clean JSON before parsing, preventing API errors
+- **Improved GPT-4o prompts**: Made prompts more explicit about generating COMPLETE rewritten clauses
+  - Emphasizes that "suggestion" must be full, legal-quality replacement text
+  - Clarifies this is NOT advice or summary, but actual contract language
+  - Requests complete clauses with all details, conditions, and protections
+- **Enhanced fallback system**: Created `createCompleteRewrittenClause()` function with full clause templates
+  - Generates complete, detailed rewritten clauses for all supported clause types
+  - Each clause type has a comprehensive template with proper legal structure
+  - Fallback clauses are now 200+ words with specific protections and conditions
+  - Examples include:
+    - Limitation of Liability: Complete clause with caps, exceptions for negligence/breaches, carve-outs for data breaches
+    - Termination: Full termination rights with notice periods, cure provisions, and transition assistance
+    - Intellectual Property: Detailed ownership provisions with assignments and license grants
+    - Indemnification: Comprehensive mutual indemnity with defense obligations and settlement controls
+    - Payment Terms: Complete payment terms with dispute resolution and interest provisions
+- Both GPT-4o and fallback now generate complete, usable contract clauses instead of short snippets
 
 ### Document AI and OCR Improvements (October 19, 2025)
 - **Made Document AI optional**: Added ENABLE_DOCUMENT_AI environment variable flag
