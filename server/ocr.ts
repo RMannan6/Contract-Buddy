@@ -8,8 +8,10 @@ import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-// Configure PDF.js worker - use CDN for better compatibility
-pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.0.379/legacy/build/pdf.worker.mjs';
+// Configure PDF.js worker - use local worker file for Node.js compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+pdfjs.GlobalWorkerOptions.workerSrc = path.join(__dirname, '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
 
 // Initialize OpenAI client with AIML API gateway (provides access to 300+ AI models)
 const openai = new OpenAI({ 
