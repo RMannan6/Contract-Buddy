@@ -248,10 +248,17 @@ ${partyContext}
 
 For each clause below:
 1. Identify the risk level (high/medium/low) ${isDraftingParty ? 'for potential enforceability issues or unfairness' : 'for the client\'s exposure'}
-2. Explain in plain English why this clause matters and what problems it could cause ${isDraftingParty ? 'from a drafting perspective' : 'from a protective standpoint'}
+2. Write a DETAILED, layman's-terms explanation covering three key points:
+   a) What specific risks or liabilities this clause creates for the client
+   b) Why the current wording is unfavorable or problematic (be specific about what's missing, one-sided, or excessive)
+   c) How the proposed changes reduce risk and better protect the client's interests
 3. Write a COMPLETE REPLACEMENT clause that maintains the same purpose but with ${isDraftingParty ? 'clearer, more balanced terms' : 'better terms that protect the client'}
 
-CRITICAL: The "suggestion" field MUST contain the ENTIRE rewritten clause - a full, legal-quality replacement text that could be inserted into the contract. NOT advice, NOT a summary - an actual complete clause.
+CRITICAL REQUIREMENTS:
+- The "explanation" field MUST be detailed (3-5 sentences minimum) covering all three points above in plain English that a non-lawyer can understand
+- Explain SPECIFIC scenarios where the current clause could cause financial loss, legal trouble, or business problems
+- Explain EXACTLY how the rewritten version addresses those risks
+- The "suggestion" field MUST contain the ENTIRE rewritten clause - a full, legal-quality replacement text that could be inserted into the contract. NOT advice, NOT a summary - an actual complete clause.
 
 Use the gold standard as a guide for structure and key protections to include.
 
@@ -261,7 +268,7 @@ Respond with ONLY a JSON object (no markdown, no code blocks) in this exact form
     {
       "title": "Brief title for the clause type",
       "originalClause": "The original clause text",
-      "explanation": "Plain English explanation of why this clause is ${isDraftingParty ? 'problematic or unclear' : 'risky'} and what could go wrong",
+      "explanation": "DETAILED plain English explanation (3-5 sentences) covering: (1) what specific risks this creates, (2) why the current wording is unfavorable, and (3) how the changes protect you better",
       "suggestion": "COMPLETE REWRITTEN CLAUSE with all details, conditions, and protections",
       "riskLevel": "high|medium|low"
     }
@@ -341,7 +348,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Limitation of Liability",
         originalClause: actualClauseText,
-        explanation: "This clause restricts how much the supplier must pay if something goes wrong. The current version may cap liability too low to adequately protect you in case of major issues, and may not exclude gross negligence or data breaches.",
+        explanation: "This clause restricts how much the supplier must pay if something goes wrong. The current version likely caps liability at an amount that's too low to cover serious issues like data breaches, system failures, or service outages that could cost your business far more than the cap allows. Additionally, it may not carve out exceptions for gross negligence or willful misconduct, meaning the supplier could act recklessly and still limit their damages. The revised version sets a reasonable cap (tied to fees paid or a minimum amount) while explicitly excluding critical scenarios like data breaches, IP infringement, and gross negligence from the cap - ensuring you can recover full damages if the supplier causes major harm through serious wrongdoing.",
         suggestion: rewrittenClause,
         riskLevel: "high"
       };
@@ -349,7 +356,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Termination Clause",
         originalClause: actualClauseText,
-        explanation: "This clause controls how and when either party can end the agreement. Unbalanced termination rights can leave you vulnerable to sudden service disruption or unfavorable long-term commitments.",
+        explanation: "This clause controls how and when either party can end the agreement. The current wording may give the supplier the right to cancel immediately while requiring you to stay locked in for months or years, or it may lack provisions for terminating if the supplier fails to deliver. This creates an unfair power imbalance where you're stuck in a failing relationship or forced to continue paying for poor service. The revised version gives both parties equal rights to terminate for convenience (with 90 days notice), allows immediate termination for material breaches that aren't fixed within 30 days, and guarantees you'll get transition assistance to move to a new provider - protecting your business continuity while giving you an escape route from underperforming suppliers.",
         suggestion: rewrittenClause,
         riskLevel: "medium"
       };
@@ -357,7 +364,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Intellectual Property Rights",
         originalClause: actualClauseText,
-        explanation: "This clause determines who owns the work created under this agreement. If not properly negotiated, you could pay for custom work but not actually own it, limiting your ability to use, modify, or transfer it freely.",
+        explanation: "This clause determines who owns the custom work created specifically for you under this contract. The current wording may allow the supplier to retain ownership of everything they create, meaning you're paying for work you don't actually own and can't freely use, modify, sell, or transfer. This could force you to keep paying the supplier to make changes, prevent you from switching providers, or even allow the supplier to license 'your' work to your competitors. The revised version clearly states that you own all custom work created for you (with full assignment of rights), while giving the supplier a license only for their pre-existing tools - ensuring you can do whatever you want with the deliverables you paid for without ongoing dependency or restrictions.",
         suggestion: rewrittenClause,
         riskLevel: "high"
       };
@@ -365,7 +372,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Indemnification",
         originalClause: actualClauseText,
-        explanation: "This clause determines who pays legal costs and damages if someone sues over the work performed. One-sided indemnification could leave you financially responsible for the supplier's mistakes or intellectual property violations.",
+        explanation: "This clause determines who pays legal costs and damages if a third party sues over the work performed. The current wording may require you to cover all legal costs and damages even when the supplier causes the problem - for example, if they use stolen code or violate someone's patent. This means you could face six or seven-figure legal bills defending lawsuits caused entirely by the supplier's wrongdoing. The revised version makes the supplier responsible for defending and paying for claims arising from their work, including IP infringement, breach of contract, and their own negligence - while you only indemnify them for issues you actually cause. This ensures the party at fault pays the legal bills, not the innocent party.",
         suggestion: rewrittenClause,
         riskLevel: "medium"
       };
@@ -373,7 +380,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Payment Terms",
         originalClause: actualClauseText,
-        explanation: "This clause establishes when and how you must pay. Unfavorable payment terms could require upfront payment before delivery, impose excessive late fees, or prevent you from disputing incorrect charges.",
+        explanation: "This clause establishes when and how you must pay, and what happens if you dispute a charge. The current wording may require immediate payment of all invoices without the right to dispute errors or unsatisfactory work, and may impose excessive late fees (like 5-10% per month) that far exceed market rates. It might also allow the supplier to cut off your service immediately for any payment dispute, even if you're disputing charges in good faith. The revised version gives you 30 days to pay, the explicit right to withhold disputed amounts while issues are resolved, reasonable late fees capped at 1.5% monthly, and protection against service suspension without 30 days notice - ensuring you can challenge incorrect bills without losing critical services or facing punitive penalties.",
         suggestion: rewrittenClause,
         riskLevel: "low"
       };
@@ -381,7 +388,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Confidentiality",
         originalClause: actualClauseText,
-        explanation: "This clause protects sensitive information shared during the business relationship. One-sided or overly broad confidentiality obligations could restrict your ability to discuss your own business or use general knowledge gained during the relationship.",
+        explanation: "This clause protects sensitive information shared during the business relationship. The current wording may impose confidentiality obligations only on you (one-sided), allow the definition of 'confidential' to include common industry knowledge or your own business information, or require you to keep everything secret forever. This could prevent you from discussing your own business operations, hiring employees who learned general skills during the project, or using publicly available information. The revised version creates mutual obligations (both parties protect each other's secrets equally), clearly defines what qualifies as confidential with reasonable exceptions (like publicly available information or things you already knew), and limits the confidentiality period to 5 years - giving you freedom to operate your business while still protecting truly sensitive information.",
         suggestion: rewrittenClause,
         riskLevel: "medium"
       };
@@ -389,7 +396,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Warranty",
         originalClause: actualClauseText,
-        explanation: "This clause establishes what the supplier promises about their work quality and what remedies you have if the work is defective. Weak warranties or disclaimer clauses can leave you with no recourse if deliverables don't meet your needs.",
+        explanation: "This clause establishes what the supplier promises about their work quality and what remedies you have if the work is defective. The current wording may disclaim all warranties (including that the work will actually function as intended), provide no recourse if deliverables fail to meet specifications, or limit your remedy to the supplier trying again indefinitely without any refund. This means you could pay in full for work that doesn't work, doesn't do what it's supposed to, or infringes third-party rights - with zero compensation or remedy. The revised version requires professional, workmanlike performance that meets specifications, promises no IP infringement, guarantees virus-free deliverables, and gives you the right to terminate and get a pro-rated refund if the supplier can't fix problems within 30 days - ensuring you get working deliverables or your money back.",
         suggestion: rewrittenClause,
         riskLevel: "medium"
       };
@@ -397,7 +404,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: "Governing Law and Jurisdiction",
         originalClause: actualClauseText,
-        explanation: "This clause determines which state's laws apply and where lawsuits must be filed. Unfavorable jurisdiction could force you to litigate in a distant, expensive forum or under laws that don't protect your interests as well.",
+        explanation: "This clause determines which state's laws apply and where lawsuits must be filed if disputes arise. The current wording may specify the supplier's home state (potentially across the country from you), forcing you to hire out-of-state attorneys, travel for depositions and court appearances, and litigate under unfamiliar laws - adding tens of thousands in legal costs before you even get to trial. It may also prevent you from recovering attorney's fees even if you win. The revised version sets jurisdiction in your state (where your business operates), applies your local laws, and awards attorney's fees to the prevailing party - ensuring any disputes are resolved in your backyard where you have local counsel and know the legal landscape, while discouraging frivolous lawsuits since the losing party pays both sides' legal fees.",
         suggestion: rewrittenClause,
         riskLevel: "low"
       };
@@ -408,7 +415,7 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
       analysis = {
         title: clauseTitle,
         originalClause: actualClauseText,
-        explanation: "This provision should be carefully reviewed to ensure it adequately protects your interests and maintains fair balance between both parties. Consider whether the terms are reasonable, achievable, and aligned with your business objectives.",
+        explanation: "This contract provision may contain one-sided terms, unclear obligations, or missing protections that could put your business at risk. The current wording might favor the supplier's interests over yours, lack specific performance standards or deadlines, impose obligations you can't realistically meet, or fail to provide adequate remedies if the supplier doesn't deliver. Without clear, balanced terms, you could face unexpected costs, legal disputes over interpretation, or find yourself locked into unfavorable commitments. The revised version balances rights and obligations fairly between both parties, includes specific performance standards and timeframes, provides clear remedies for non-performance, and ensures both parties have reasonable flexibility to address changing business needs - creating a framework that protects both sides while reducing the risk of costly disputes.",
         suggestion: rewrittenClause,
         riskLevel: "medium"
       };

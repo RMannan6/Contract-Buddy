@@ -41,3 +41,40 @@ The backend runs on **Node.js** with **Express.js** and **TypeScript**. It provi
 
 **Database**:
 - **snowflake-sdk**: Connects to and operates with the Snowflake cloud data warehouse.
+## Recent Changes (October 19, 2025)
+
+### Enhanced Risk Explanations (Latest Update)
+- **Detailed "Why This Change" sections**: Significantly improved the depth and clarity of risk explanations for every contract clause
+  - Each explanation now covers 3 key points: (1) specific risks and liabilities the user faces, (2) why the current wording is unfavorable or problematic, (3) how the proposed changes reduce risk and better protect the user
+  - Explanations are 3-5 sentences with concrete, real-world examples that non-lawyers can understand
+  - Enhanced AI prompt to require detailed explanations with specific scenarios of financial loss, legal trouble, or business problems
+  - Updated fallback explanations for all clause types with the same level of detail
+  - **Example**: Limitation of liability now explains how low caps leave you vulnerable to major data breaches, why excluding gross negligence allows reckless behavior, and how the revised version protects full recovery for serious wrongdoing
+
+### Party Identification System
+- **Two-party extraction**: System extracts both parties' names from contracts using GPT-4o via AIML API
+- **Database schema**: Added `party1_name`, `party2_name`, and `user_selected_party` columns to documents table
+- **Party selection dialog**: Users choose which party they represent and their role (drafting vs. adverse party)
+- **Personalized analysis**: Recommendations include specific party names and are tailored to user's role
+- **Fixed party persistence bug**: Party names are now properly saved to database after extraction using new `PartyNamesSchema` and `updateDocumentPartyNames()` method
+
+### UI/UX Improvements
+- **Upload area reset**: Upload section automatically resets when party dialog is closed, allowing immediate re-upload
+- **Error handling**: Enhanced error messages throughout the application with user-friendly explanations
+- **Progress indicators**: Upload and analysis progress now reset properly on errors
+- **Toaster notifications**: Added toast component for better error and success feedback
+
+### PDF Processing Fixes
+- **PDF.js worker**: Changed from HTTPS CDN to local file path for Node.js compatibility
+- **Error handling**: Better validation for empty or corrupted PDFs with clear error messages
+- **OCR fallback**: Robust fallback system when Document AI is unavailable
+
+### API Endpoints
+- `POST /api/upload` - Upload contract file
+- `POST /api/document/:documentId/extract-parties` - Extract and save party names using AI
+- `GET /api/document/:documentId/party-info` - Retrieve party information
+- `POST /api/document/:documentId/party-info` - Save user's party selection and role
+- `POST /api/analyze/:documentId` - Analyze contract with personalized recommendations
+- `GET /api/analysis/:documentId` - Retrieve analysis results
+- `GET /api/document/:documentId/revised` - Download revised contract with all changes
+- `GET /api/document/:documentId/revised-with-changes` - Download contract with tracked changes and explanations
