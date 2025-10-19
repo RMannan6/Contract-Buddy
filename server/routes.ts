@@ -185,6 +185,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get party information endpoint
+  app.get("/api/document/:documentId/party-info", async (req: Request, res: Response) => {
+    try {
+      const documentId = parseInt(req.params.documentId);
+      
+      if (isNaN(documentId)) {
+        return res.status(400).json({ message: "Invalid document ID" });
+      }
+
+      const document = await storage.getDocumentById(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      res.json({
+        userPartyType: document.userPartyType,
+        draftingPartyName: document.draftingPartyName,
+        userEntityName: document.userEntityName,
+      });
+    } catch (error) {
+      console.error("Error retrieving party information:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Unknown error retrieving party information" });
+    }
+  });
+
   // Update party information endpoint
   app.post("/api/document/:documentId/party-info", async (req: Request, res: Response) => {
     try {

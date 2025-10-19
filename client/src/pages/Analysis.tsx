@@ -8,6 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { NegotiationPoint } from "@shared/schema";
 
+interface PartyInfo {
+  userPartyType: string | null;
+  draftingPartyName: string | null;
+  userEntityName: string | null;
+}
+
 export default function Analysis() {
   const [, params] = useRoute<{ id: string }>("/analysis/:id");
   const { toast } = useToast();
@@ -15,6 +21,13 @@ export default function Analysis() {
 
   const { data, isLoading, error } = useQuery<{ negotiationPoints: NegotiationPoint[] }>({
     queryKey: [`/api/analysis/${documentId}`],
+    enabled: !!documentId,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: partyInfo } = useQuery<PartyInfo>({
+    queryKey: [`/api/document/${documentId}/party-info`],
     enabled: !!documentId,
     refetchInterval: false,
     refetchOnWindowFocus: false,
@@ -94,6 +107,7 @@ export default function Analysis() {
           <AnalysisResults 
             negotiationPoints={data.negotiationPoints as NegotiationPoint[]}
             documentId={documentId as number}
+            partyInfo={partyInfo || null}
             onEmailReport={sendReportByEmail}
             onDownloadPdf={downloadPdf}
           />

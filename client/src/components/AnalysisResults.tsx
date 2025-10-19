@@ -6,9 +6,16 @@ import { RiskLevel, getRiskColor, getRiskBgColor, getRiskBorderColor, copyToClip
 import { useToast } from "@/hooks/use-toast";
 import { NegotiationPoint } from "@shared/schema";
 
+interface PartyInfo {
+  userPartyType: string | null;
+  draftingPartyName: string | null;
+  userEntityName: string | null;
+}
+
 interface AnalysisResultsProps {
   negotiationPoints: NegotiationPoint[];
   documentId: number;
+  partyInfo: PartyInfo | null;
   onEmailReport: (email: string) => void;
   onDownloadPdf: () => void;
 }
@@ -16,6 +23,7 @@ interface AnalysisResultsProps {
 export default function AnalysisResults({ 
   negotiationPoints, 
   documentId,
+  partyInfo,
   onEmailReport, 
   onDownloadPdf 
 }: AnalysisResultsProps) {
@@ -127,6 +135,46 @@ export default function AnalysisResults({
               </Button>
             </div>
           </div>
+          
+          {partyInfo && (partyInfo.userPartyType || partyInfo.draftingPartyName || partyInfo.userEntityName) && (
+            <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2">Party Context</h3>
+                  <div className="text-sm text-blue-800 space-y-1">
+                    {partyInfo.userPartyType && (
+                      <p>
+                        <span className="font-medium">Your Role:</span>{' '}
+                        {partyInfo.userPartyType === 'drafting' 
+                          ? 'Drafting Party (you or your organization drafted this contract)' 
+                          : 'Adverse Party (reviewing a contract drafted by the other party)'}
+                      </p>
+                    )}
+                    {partyInfo.draftingPartyName && (
+                      <p>
+                        <span className="font-medium">First Listed Party:</span> {partyInfo.draftingPartyName}
+                      </p>
+                    )}
+                    {partyInfo.userEntityName && (
+                      <p>
+                        <span className="font-medium">Your Entity:</span> {partyInfo.userEntityName}
+                      </p>
+                    )}
+                    {partyInfo.userPartyType && (
+                      <p className="text-xs mt-2 italic">
+                        {partyInfo.userPartyType === 'drafting' 
+                          ? 'Recommendations focus on clarity and fairness to protect your interests while maintaining a balanced agreement.' 
+                          : 'Recommendations focus on risk mitigation and negotiation strategies to better protect your interests.'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-slate-900 mb-4">Top 5 Terms to Negotiate</h3>
