@@ -49,10 +49,10 @@ Preferred communication style: Simple, everyday language.
 **AI Processing**:
 - **Snowflake Document AI Model** (`CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY`) for document parsing using PREDICT function with GET_PRESIGNED_URL
 - Top 5 clause selection based on risk priority (limitation_of_liability, indemnification, intellectual_property, termination, payment_terms)
-- **AIML API** gateway for accessing GPT-3.5-turbo and 300+ other AI models
-- **OpenAI GPT-3.5-turbo** (via AIML API) for clause analysis and negotiation recommendations (with intelligent fallback when quota exceeded)
+- **AIML API** gateway for accessing GPT-5 and 300+ other AI models
+- **OpenAI GPT-5** (via AIML API) for advanced clause analysis and generation of actual rewritten clause text
 - Contract comparison against gold standard clauses using semantic similarity
-- LLM-based generation of negotiation points and recommendations
+- LLM-based generation of complete rewritten clauses (not advice, but actual replacement text)
 
 **Development Features**:
 - Vite middleware integration for HMR in development
@@ -99,7 +99,7 @@ Preferred communication style: Simple, everyday language.
 
 **AI Services**:
 - **AIML API** (aimlapi.com) - Unified gateway providing access to 300+ AI models through OpenAI-compatible API
-- OpenAI GPT-3.5-turbo (via AIML API) - Contract analysis and recommendations
+- OpenAI GPT-5 (via AIML API) - Advanced contract analysis and generation of rewritten clause text
 - Anthropic Claude SDK (installed but not actively used in current implementation)
 
 **Document Processing**:
@@ -150,9 +150,26 @@ Preferred communication style: Simple, everyday language.
 - Local file paths validated to be in tmp directory
 - No user-provided filenames used in SQL statements
 
-### AIML API Integration (October 19, 2025)
+### AIML API Integration with GPT-5 (October 19, 2025)
 - Integrated AIML API gateway for unified access to 300+ AI models
 - Configured OpenAI SDK to use AIML API base URL (https://api.aimlapi.com/v1)
-- Using GPT-3.5-turbo through AIML API for cost-effective contract analysis
+- **Using GPT-5** through AIML API for advanced contract analysis
+- Updated prompts to generate **actual rewritten clause text** instead of generic advice
+- Each "suggestion" field now contains complete replacement clause language
+- Fallback system also provides rewritten clauses for all top 5 clause types
 - Automatic fallback to OPENAI_API_KEY if AIML_API_KEY not available
 - Provides access to models from OpenAI, Anthropic, Google, and other providers
+
+### Clause Rewriting Implementation (October 19, 2025)
+- Changed GPT model from GPT-3.5-turbo to **GPT-5** for better quality recommendations
+- Updated all analysis prompts to explicitly request complete rewritten clause text
+- Fallback analysis now provides actual clause rewrites for:
+  - Limitation of Liability (includes carve-outs for gross negligence and data breaches)
+  - Termination (balanced notice periods and transition assistance)
+  - Intellectual Property (customer ownership of custom work)
+  - Indemnification (mutual obligations with proper protections)
+  - Payment Terms (30-day terms with dispute provisions)
+  - Confidentiality (balanced obligations with clear exclusions)
+  - Warranty (performance standards with remedies)
+  - Governing Law (customer-favorable jurisdiction)
+- "Suggestion" field now contains actual replacement text that can be used directly in contracts
