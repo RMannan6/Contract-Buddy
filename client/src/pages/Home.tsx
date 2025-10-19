@@ -123,13 +123,14 @@ export default function Home() {
       
       // Wait a moment to show 100% progress
       setTimeout(() => {
-        setIsAnalyzing(false);
         // Navigate to the analysis page
         setLocation(`/analysis/${documentId}`);
+        // Reset all upload state after navigation
+        resetUploadState();
       }, 500);
       
     } catch (error) {
-      setIsAnalyzing(false);
+      resetUploadState();
       toast({
         title: "Analysis Failed",
         description: error instanceof Error ? error.message : "An unknown error occurred",
@@ -140,8 +141,19 @@ export default function Home() {
 
   const handlePartyDialogComplete = () => {
     if (currentDocumentId) {
+      setShowPartyDialog(false); // Close the dialog
       startAnalysis(currentDocumentId);
     }
+  };
+
+  const resetUploadState = () => {
+    setIsUploading(false);
+    setUploadProgress(0);
+    setIsAnalyzing(false);
+    setAnalysisProgress(0);
+    setAnalysisStatus("Extracting text from document...");
+    setCurrentDocumentId(null);
+    setShowPartyDialog(false);
   };
 
   return (
