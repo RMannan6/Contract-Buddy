@@ -187,8 +187,9 @@ export class SnowflakeStorage implements IStorage {
       uploadedAt: row.UPLOADED_AT || row.uploadedAt,
       expiresAt: row.EXPIRES_AT || row.expiresAt,
       userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
-      draftingPartyName: row.DRAFTING_PARTY_NAME || row.draftingPartyName || null,
-      userEntityName: row.USER_ENTITY_NAME || row.userEntityName || null,
+      party1Name: row.PARTY1_NAME || row.party1Name || null,
+      party2Name: row.PARTY2_NAME || row.party2Name || null,
+      userSelectedParty: row.USER_SELECTED_PARTY || row.userSelectedParty || null,
     } as Document;
   }
 
@@ -201,8 +202,8 @@ export class SnowflakeStorage implements IStorage {
 
   async updateDocumentPartyInfo(documentId: number, partyInfo: PartyInfo): Promise<Document | undefined> {
     await snowflakeDb.execute(
-      `UPDATE documents SET user_party_type = ?, drafting_party_name = ?, user_entity_name = ? WHERE id = ?`,
-      [partyInfo.userPartyType, partyInfo.draftingPartyName || null, partyInfo.userEntityName || null, documentId]
+      `UPDATE documents SET user_party_type = ?, party1_name = ?, party2_name = ?, user_selected_party = ? WHERE id = ?`,
+      [partyInfo.userPartyType, partyInfo.party1Name || null, partyInfo.party2Name || null, partyInfo.userSelectedParty || null, documentId]
     );
     
     // Query back the updated document
@@ -222,8 +223,9 @@ export class SnowflakeStorage implements IStorage {
       uploadedAt: row.UPLOADED_AT || row.uploadedAt,
       expiresAt: row.EXPIRES_AT || row.expiresAt,
       userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
-      draftingPartyName: row.DRAFTING_PARTY_NAME || row.draftingPartyName || null,
-      userEntityName: row.USER_ENTITY_NAME || row.userEntityName || null,
+      party1Name: row.PARTY1_NAME || row.party1Name || null,
+      party2Name: row.PARTY2_NAME || row.party2Name || null,
+      userSelectedParty: row.USER_SELECTED_PARTY || row.userSelectedParty || null,
     } as Document;
   }
 
@@ -238,8 +240,9 @@ export class SnowflakeStorage implements IStorage {
       uploadedAt: row.UPLOADED_AT || row.uploadedAt,
       expiresAt: row.EXPIRES_AT || row.expiresAt,
       userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
-      draftingPartyName: row.DRAFTING_PARTY_NAME || row.draftingPartyName || null,
-      userEntityName: row.USER_ENTITY_NAME || row.userEntityName || null,
+      party1Name: row.PARTY1_NAME || row.party1Name || null,
+      party2Name: row.PARTY2_NAME || row.party2Name || null,
+      userSelectedParty: row.USER_SELECTED_PARTY || row.userSelectedParty || null,
     }));
   }
 

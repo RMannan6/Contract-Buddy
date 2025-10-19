@@ -12,43 +12,43 @@ const openai = new OpenAI({
 });
 
 export interface PartyExtractionResult {
-  draftingPartyName: string | null;
+  party1Name: string | null;
+  party2Name: string | null;
   confidence: 'high' | 'medium' | 'low';
   context: string;
 }
 
 /**
- * Extracts the first listed entity or party name from a contract
- * Assumes the first party mentioned is typically the drafting party
+ * Extracts both party names from a contract
+ * Returns the first and second parties mentioned in the agreement
  */
-export async function extractDraftingParty(contractText: string): Promise<PartyExtractionResult> {
+export async function extractBothParties(contractText: string): Promise<PartyExtractionResult> {
   try {
     // Take first 2000 characters to focus on the header/preamble where parties are typically listed
     const contractStart = contractText.slice(0, 2000);
     
-    const prompt = `You are a legal document analyzer. Your task is to identify the first party or entity name mentioned in this contract.
-
-The first party mentioned is typically the drafting party (the one who wrote or provided the contract).
+    const prompt = `You are a legal document analyzer. Your task is to identify BOTH parties (entities or individuals) mentioned in this contract.
 
 Look for patterns like:
-- "This Agreement is made between [PARTY NAME] and..."
-- "This Contract dated ... is entered into by [PARTY NAME]..."
-- "PARTY 1: [NAME]"
-- "[PARTY NAME] (hereinafter referred to as..."
+- "This Agreement is made between [PARTY 1 NAME] and [PARTY 2 NAME]..."
+- "This Contract is entered into by [PARTY 1] and [PARTY 2]..."
+- "PARTY 1: [NAME] ... PARTY 2: [NAME]"
+- "[PARTY 1 NAME] (hereinafter referred to as...) and [PARTY 2 NAME] (hereinafter..."
 
-Extract ONLY the entity/party name, not descriptions like "hereinafter referred to as" or legal role descriptions.
+Extract ONLY the entity/party names, not descriptions like "hereinafter referred to as", legal role descriptions, or pronouns.
 
 Contract excerpt:
 ${contractStart}
 
 Respond with a JSON object in this exact format:
 {
-  "draftingPartyName": "The first party name or entity",
+  "party1Name": "The first party name or entity",
+  "party2Name": "The second party name or entity",
   "confidence": "high|medium|low",
-  "context": "Brief explanation of where/how you found this name"
+  "context": "Brief explanation of where/how you found these names"
 }
 
-If you cannot identify a clear party name, set draftingPartyName to null and explain why in context.`;
+If you cannot identify both party names, set the missing party to null and explain why in context.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -78,17 +78,19 @@ If you cannot identify a clear party name, set draftingPartyName to null and exp
     const result = JSON.parse(cleanedResponse);
     
     return {
-      draftingPartyName: result.draftingPartyName || null,
+      party1Name: result.party1Name || null,
+      party2Name: result.party2Name || null,
       confidence: result.confidence || 'low',
       context: result.context || 'No context provided'
     };
     
   } catch (error) {
-    console.error('Error extracting drafting party:', error);
+    console.error('Error extracting party names:', error);
     return {
-      draftingPartyName: null,
+      party1Name: null,
+      party2Name: null,
       confidence: 'low',
-      context: 'Failed to extract party name due to an error'
+      context: 'Failed to extract party names due to an error'
     };
   }
 }

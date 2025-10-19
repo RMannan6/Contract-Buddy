@@ -8,8 +8,9 @@ import { NegotiationPoint } from "@shared/schema";
 
 interface PartyInfo {
   userPartyType: string | null;
-  draftingPartyName: string | null;
-  userEntityName: string | null;
+  party1Name: string | null;
+  party2Name: string | null;
+  userSelectedParty: string | null;
 }
 
 interface AnalysisResultsProps {
@@ -136,7 +137,7 @@ export default function AnalysisResults({
             </div>
           </div>
           
-          {partyInfo && (partyInfo.userPartyType || partyInfo.draftingPartyName || partyInfo.userEntityName) && (
+          {partyInfo && (partyInfo.userPartyType || partyInfo.party1Name || partyInfo.party2Name) && (
             <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -145,22 +146,26 @@ export default function AnalysisResults({
                 <div>
                   <h3 className="text-sm font-semibold text-blue-900 mb-2">Party Context</h3>
                   <div className="text-sm text-blue-800 space-y-1">
+                    {partyInfo.userSelectedParty && (partyInfo.party1Name || partyInfo.party2Name) && (
+                      <p>
+                        <span className="font-medium">You represent:</span>{' '}
+                        <strong>
+                          {partyInfo.userSelectedParty === 'party1' ? partyInfo.party1Name : partyInfo.party2Name}
+                        </strong>
+                      </p>
+                    )}
+                    {partyInfo.party1Name && partyInfo.party2Name && (
+                      <p>
+                        <span className="font-medium">Other party:</span>{' '}
+                        {partyInfo.userSelectedParty === 'party1' ? partyInfo.party2Name : partyInfo.party1Name}
+                      </p>
+                    )}
                     {partyInfo.userPartyType && (
                       <p>
                         <span className="font-medium">Your Role:</span>{' '}
                         {partyInfo.userPartyType === 'drafting' 
                           ? 'Drafting Party (you or your organization drafted this contract)' 
                           : 'Adverse Party (reviewing a contract drafted by the other party)'}
-                      </p>
-                    )}
-                    {partyInfo.draftingPartyName && (
-                      <p>
-                        <span className="font-medium">First Listed Party:</span> {partyInfo.draftingPartyName}
-                      </p>
-                    )}
-                    {partyInfo.userEntityName && (
-                      <p>
-                        <span className="font-medium">Your Entity:</span> {partyInfo.userEntityName}
                       </p>
                     )}
                     {partyInfo.userPartyType && (

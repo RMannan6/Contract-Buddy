@@ -194,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid document ID" });
       }
 
-      const document = await storage.getDocumentById(documentId);
+      const document = await storage.getDocument(documentId);
       
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
@@ -202,8 +202,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         userPartyType: document.userPartyType,
-        draftingPartyName: document.draftingPartyName,
-        userEntityName: document.userEntityName,
+        party1Name: document.party1Name,
+        party2Name: document.party2Name,
+        userSelectedParty: document.userSelectedParty,
       });
     } catch (error) {
       console.error("Error retrieving party information:", error);
@@ -234,8 +235,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         documentId, 
         userPartyType: updatedDocument.userPartyType,
-        draftingPartyName: updatedDocument.draftingPartyName,
-        userEntityName: updatedDocument.userEntityName
+        party1Name: updatedDocument.party1Name,
+        party2Name: updatedDocument.party2Name,
+        userSelectedParty: updatedDocument.userSelectedParty
       });
     } catch (error) {
       console.error("Party info update error:", error);
@@ -243,10 +245,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Extract drafting party from document
-  app.post("/api/document/:documentId/extract-party", async (req: Request, res: Response) => {
+  // Extract both parties from document
+  app.post("/api/document/:documentId/extract-parties", async (req: Request, res: Response) => {
     try {
-      const { extractDraftingParty } = await import("./party-extraction");
+      const { extractBothParties } = await import("./party-extraction");
       const documentId = parseInt(req.params.documentId);
       
       if (isNaN(documentId)) {
@@ -259,8 +261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Extract the drafting party name from contract text
-      const result = await extractDraftingParty(document.content);
+      // Extract both party names from contract text
+      const result = await extractBothParties(document.content);
       
       res.json(result);
     } catch (error) {
@@ -297,8 +299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare party information
       const partyInfo = {
         userPartyType: document.userPartyType,
-        draftingPartyName: document.draftingPartyName,
-        userEntityName: document.userEntityName
+        party1Name: document.party1Name,
+        party2Name: document.party2Name,
+        userSelectedParty: document.userSelectedParty
       };
       
       // Analyze the contract with personalized recommendations

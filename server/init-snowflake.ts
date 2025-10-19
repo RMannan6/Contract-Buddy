@@ -46,18 +46,26 @@ export async function initializeSnowflakeTables(): Promise<void> {
     }
     
     try {
-      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN drafting_party_name VARCHAR(500)`);
+      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN party1_name VARCHAR(500)`);
     } catch (error: any) {
       if (!error.message?.includes('already exists')) {
-        console.error('Error adding drafting_party_name column:', error);
+        console.error('Error adding party1_name column:', error);
       }
     }
     
     try {
-      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN user_entity_name VARCHAR(500)`);
+      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN party2_name VARCHAR(500)`);
     } catch (error: any) {
       if (!error.message?.includes('already exists')) {
-        console.error('Error adding user_entity_name column:', error);
+        console.error('Error adding party2_name column:', error);
+      }
+    }
+    
+    try {
+      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN user_selected_party VARCHAR(50)`);
+    } catch (error: any) {
+      if (!error.message?.includes('already exists')) {
+        console.error('Error adding user_selected_party column:', error);
       }
     }
 

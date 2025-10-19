@@ -10,8 +10,9 @@ import { NegotiationPoint } from "@shared/schema";
 
 interface PartyInfo {
   userPartyType: string | null;
-  draftingPartyName: string | null;
-  userEntityName: string | null;
+  party1Name: string | null;
+  party2Name: string | null;
+  userSelectedParty: string | null;
 }
 
 export default function Analysis() {
