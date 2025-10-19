@@ -5,7 +5,8 @@ import {
   GoldStandardClause, InsertGoldStandardClause,
   AnalysisResult, InsertAnalysisResult,
   NegotiationPoint,
-  PartyInfo
+  PartyInfo,
+  PartyNames
 } from "@shared/schema";
 
 import { db } from "./db";
@@ -29,6 +30,7 @@ export interface IStorage {
   createDocument(document: InsertDocument): Promise<Document>;
   getDocument(id: number): Promise<Document | undefined>;
   updateDocumentPartyInfo(documentId: number, partyInfo: PartyInfo): Promise<Document | undefined>;
+  updateDocumentPartyNames(documentId: number, partyNames: PartyNames): Promise<Document | undefined>;
   updateDocumentContent(documentId: number, content: string): Promise<void>;
   deleteExpiredDocuments(): Promise<void>;
 
@@ -93,8 +95,22 @@ export class DatabaseStorage implements IStorage {
       .update(documents)
       .set({
         userPartyType: partyInfo.userPartyType,
-        draftingPartyName: partyInfo.draftingPartyName || null,
-        userEntityName: partyInfo.userEntityName || null
+        party1Name: partyInfo.party1Name || null,
+        party2Name: partyInfo.party2Name || null,
+        userSelectedParty: partyInfo.userSelectedParty || null
+      })
+      .where(eq(documents.id, documentId))
+      .returning();
+    
+    return updated || undefined;
+  }
+
+  async updateDocumentPartyNames(documentId: number, partyNames: PartyNames): Promise<Document | undefined> {
+    const [updated] = await db
+      .update(documents)
+      .set({
+        party1Name: partyNames.party1Name || null,
+        party2Name: partyNames.party2Name || null
       })
       .where(eq(documents.id, documentId))
       .returning();

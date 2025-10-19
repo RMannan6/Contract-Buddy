@@ -264,6 +264,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract both party names from contract text
       const result = await extractBothParties(document.content);
       
+      // Save the extracted party names to the database
+      await storage.updateDocumentPartyNames(documentId, {
+        party1Name: result.party1Name || undefined,
+        party2Name: result.party2Name || undefined,
+      });
+      
       res.json(result);
     } catch (error) {
       console.error("Party extraction error:", error);

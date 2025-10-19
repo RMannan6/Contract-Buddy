@@ -1,243 +1,43 @@
 # ContractBuddy - AI-Powered Contract Analysis Platform
 
 ## Overview
-
-ContractBuddy is a web application that helps users analyze legal contracts using AI technology. Users can upload contracts in various formats (PDF, DOCX, images), and the system extracts text, identifies clauses, and compares them against "gold standard" clauses to provide negotiation recommendations. The application generates plain-English explanations of risky terms and suggests improvements to better protect user interests.
+ContractBuddy is a web application designed to assist users in analyzing legal contracts using artificial intelligence. The platform enables users to upload contracts in various formats (PDF, DOCX, images), whereupon it extracts text, identifies key clauses, and compares them against a repository of "gold standard" clauses. Its primary purpose is to provide negotiation recommendations, generate plain-English explanations of potentially risky terms, and suggest improvements to better safeguard user interests. The project aims to streamline contract review processes, offering a significant advantage in legal and business negotiations.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Frontend Architecture
-
-**Framework**: React with TypeScript using Vite as the build tool
-
-**UI Component Library**: shadcn/ui components built on Radix UI primitives, styled with Tailwind CSS using the "new-york" theme variant
-
-**Routing**: wouter for client-side routing with two main routes:
-- Home page (`/`) - Upload interface and landing page
-- Analysis page (`/analysis/:id`) - Display contract analysis results
-
-**State Management**: 
-- TanStack Query (React Query) for server state management and API data caching
-- Local React state for UI interactions and upload progress tracking
-
-**Styling**: Tailwind CSS with custom color scheme featuring a primary blue accent color and neutral base colors, supporting both light and dark themes
+The frontend is built with **React** and **TypeScript**, using **Vite** for tooling. It leverages **shadcn/ui** (based on Radix UI and styled with **Tailwind CSS** "new-york" theme) for UI components. **wouter** handles client-side routing, primarily for home and analysis pages. **TanStack Query** manages server state and API caching, complemented by local React state for UI interactions. The styling employs a custom Tailwind CSS theme with a blue accent and supports both light and dark modes.
 
 ### Backend Architecture
-
-**Runtime**: Node.js with Express.js framework
-
-**Language**: TypeScript with ES modules
-
-**API Design**: RESTful API with the following key endpoints:
-- `POST /api/upload` - File upload and OCR processing
-- `POST /api/analyze/:documentId` - Trigger contract analysis
-- `GET /api/analysis/:documentId` - Retrieve analysis results
-- `GET /api/document/:documentId/revised` - Download revised contract
-- `GET /api/document/:documentId/revised-with-changes` - Download contract with tracked changes
-
-**File Processing**:
-- Multer for handling multipart file uploads with 10MB size limit
-- Support for PDF, DOCX, JPG, and PNG formats
-- **Snowflake Document AI** for primary document parsing and clause extraction
-- Fallback to native PDF/DOCX text extraction when Document AI unavailable
-- Automatic cleanup of staged files after processing
-
-**AI Processing**:
-- **Snowflake Document AI Model** (`CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY`) for document parsing using PREDICT function with GET_PRESIGNED_URL
-- Top 5 clause selection based on risk priority (limitation_of_liability, indemnification, intellectual_property, termination, payment_terms)
-- **AIML API** gateway for accessing GPT-5 and 300+ other AI models
-- **OpenAI GPT-5** (via AIML API) for advanced clause analysis and generation of actual rewritten clause text
-- Contract comparison against gold standard clauses using semantic similarity
-- LLM-based generation of complete rewritten clauses (not advice, but actual replacement text)
-
-**Development Features**:
-- Vite middleware integration for HMR in development
-- Custom logging system with timestamps
-- Error handling middleware
-- Request/response logging for API routes
+The backend runs on **Node.js** with **Express.js** and **TypeScript**. It provides a **RESTful API** for file uploads, contract analysis, and result retrieval. File processing uses **Multer** for multipart uploads (PDF, DOCX, JPG, PNG, up to 10MB), with **Snowflake Document AI** as the primary text and clause extractor, falling back to native PDF/DOCX extraction or **OpenAI Vision API** for images when necessary. **Snowflake Document AI Model** is used for document parsing. **AIML API** (accessing **OpenAI GPT-5/4o**) performs advanced clause analysis, semantic comparison against gold standards, and generates rewritten clause text. Development features include Vite middleware, custom logging, and error handling.
 
 ### Data Storage
+**Snowflake** serves as the cloud data warehouse, accessed via `snowflake-sdk`. A dedicated `CONTRACT_UPLOADS` stage handles temporary document storage. Key tables include `documents`, `clauses`, `gold_standard_clauses`, and `analysis_results`. IDs are generated using explicit Snowflake sequences. Documents and staged files have an automatic 24-hour expiration and cleanup. Analysis results are stored as JSON strings. Security measures include sanitized file paths, strict regex validation for stage files, parameterized queries, and environment variable-based database credentials.
 
-**Database**: Snowflake cloud data warehouse
+### System Design Choices
+- **Two-Party Identification**: The system extracts and distinguishes two parties in a contract using GPT-4o, allowing users to select which party they represent for personalized recommendations.
+- **Top 5 Clause Analysis**: Analysis focuses on the top 5 highest-priority clauses (limitation_of_liability, indemnification, intellectual_property, termination, payment_terms).
+- **Complete Clause Rewrites**: AI-generated "suggestions" are complete, legally sound replacement clauses, not just summaries or advice, with robust fallback templates for detailed clause generation.
+- **Tracked Changes Document Generation**: A reliable two-part document generation process clearly outlines suggested changes with explanations, original text, and rewritten text.
+- **Optional Document AI**: Integration of Snowflake Document AI is optional via an environment variable, allowing fallback to native OCR methods.
 
-**Connection**: snowflake-sdk for direct SQL execution and data operations
-
-**Snowflake Stage**: CONTRACT_UPLOADS stage for temporary document storage during Document AI processing
-
-**Tables**:
-- `users` - User accounts (currently not actively used for authentication)
-- `documents` - Uploaded contract files with expiration timestamps and full text content
-- `clauses` - Top 5 extracted clauses from contracts with type, risk level, and position
-- `gold_standard_clauses` - Reference clauses for comparison with category and risk ratings
-- `analysis_results` - Stored analysis results linking documents to their negotiation points
-
-**Sequences**:
-- Explicit named sequences (seq_documents, seq_clauses, seq_analysis_results, etc.) for reliable ID generation
-- Replaces Snowflake AUTOINCREMENT for predictable ID management
-
-**Data Lifecycle**:
-- Documents automatically expire after 24 hours
-- Periodic cleanup job removes expired documents
-- Staged files in CONTRACT_UPLOADS are automatically removed after Document AI processing
-- Analysis results stored as TEXT with JSON.stringify() for compatibility
-
-**Connection Management**: 
-- Snowflake connection pooling with warehouse: COMPUTE_WH
-- Database credentials via SNOWFLAKE_* environment variables
-
-**Security**:
-- File paths sanitized using MIME type-derived extensions only
-- Strict regex validation for stage file paths (doc_\d+\.(pdf|docx|jpg|png|bin))
-- Parameterized queries for PREDICT function calls
-- No user-controlled data in SQL statements
-
-### External Dependencies
+## External Dependencies
 
 **AI Services**:
-- **AIML API** (aimlapi.com) - Unified gateway providing access to 300+ AI models through OpenAI-compatible API
-- OpenAI GPT-5 (via AIML API) - Advanced contract analysis and generation of rewritten clause text
-- Anthropic Claude SDK (installed but not actively used in current implementation)
+- **AIML API**: Unified gateway for 300+ AI models, used for advanced contract analysis and text generation.
+- **OpenAI GPT-5/4o** (via AIML API): Core AI model for advanced clause analysis and rewritten clause generation.
 
 **Document Processing**:
-- **Snowflake Document AI** - Primary document parsing and clause extraction
-- mammoth - DOCX text extraction (fallback)
-- pdfjs-dist/legacy - PDF parsing and text extraction (fallback for Node.js environment)
-- OpenAI Vision API - Image-based text extraction for JPG/PNG files (fallback)
+- **Snowflake Document AI**: Primary service for document parsing and clause extraction.
+- **mammoth**: DOCX text extraction (fallback).
+- **pdfjs-dist/legacy**: PDF parsing and text extraction (fallback).
+- **OpenAI Vision API**: Image-based text extraction for JPG/PNG (fallback).
 
 **File Handling**:
-- multer - Multipart form data and file upload processing
-- File system operations for temporary file storage
+- **multer**: Handles multipart form data and file uploads.
 
 **Database**:
-- snowflake-sdk - Snowflake database connection and operations
-- Direct SQL execution for database operations (no ORM)
-
-**Development Tools**:
-- @replit/vite-plugin-runtime-error-modal - Development error overlay
-- @replit/vite-plugin-cartographer - Replit-specific development tooling
-- tsx - TypeScript execution for development server
-
-**Build Tools**:
-- esbuild - Server-side bundling for production
-- Vite - Frontend bundling and development server
-
-## Recent Changes (October 19, 2025)
-
-### Two-Party Identification Feature (October 19, 2025)
-- **Enhanced party extraction**: System now extracts BOTH parties' names from contracts using GPT-4o
-- **New database schema**: Replaced `draftingPartyName`/`userEntityName` with `party1_name`, `party2_name`, `user_selected_party`
-- **Party selection dialog**: Users can now choose which party they represent from the two extracted parties
-- **Personalized recommendations**: Analysis includes specific party names in recommendations (e.g., "Your client is ACME Corporation")
-- **Complete personalization flow**: Combined party selection + role (drafting/adverse) for fully contextualized advice
-- **API endpoints**:
-  - `POST /api/document/:documentId/extract-parties` - Extracts both party names using AI
-  - `GET /api/document/:documentId/party-info` - Retrieves party information
-  - `POST /api/document/:documentId/party-info` - Saves user's party selection
-- **Updated AI analysis**: The `analyzeContract` function now uses specific party names in prompts for better personalization
-
-### Bug Fixes and Improvements (October 19, 2025)
-- **Fixed critical UI bug**: Added Toaster component to App.tsx - error messages were not displaying to users
-- **Improved PDF processing**: 
-  - Changed PDF.js worker to use CDN for better compatibility
-  - Enhanced error handling with user-friendly messages
-  - Better validation for empty or corrupted PDFs
-- **Upload error handling**: Progress now resets on errors, preventing stuck UI states
-- **Better error messages**: All file processing errors now show clear, actionable feedback to users
-
-### Document AI Integration
-- Integrated Snowflake Document AI model (CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY) for document parsing
-- Replaced traditional OCR/text extraction with Document AI PREDICT function using GET_PRESIGNED_URL
-- Created CONTRACT_UPLOADS Snowflake stage for temporary document storage
-- Implemented automatic file cleanup after processing
-- Added comprehensive security hardening:
-  - MIME type-based file extensions (no user-controlled data)
-  - Strict regex validation for all file paths
-  - Parameterized queries for SQL injection prevention
-  - Sanitized temporary file naming using randomUUID only
-
-### Top 5 Clause Analysis
-- Modified analysis to select and analyze only the top 5 highest-priority clauses
-- Priority ranking: limitation_of_liability (1), indemnification (2), intellectual_property (3), termination (4), payment_terms (5)
-- Removed hardcoded fallback clauses - only analyzes clauses actually found in uploaded contracts
-
-### Security Improvements
-- Eliminated all SQL injection vulnerabilities in Document AI integration
-- File paths use only safe, controlled values (UUID + MIME extension)
-- Stage file paths validated with regex: `^doc_\d+\.(pdf|docx|jpg|png|bin)$`
-- Local file paths validated to be in tmp directory
-- No user-provided filenames used in SQL statements
-
-### AIML API Integration with GPT-4o (October 19, 2025)
-- Integrated AIML API gateway for unified access to 300+ AI models
-- Configured OpenAI SDK to use AIML API base URL (https://api.aimlapi.com/v1)
-- **Using GPT-4o** through AIML API for advanced contract analysis
-- Updated prompts to generate **actual rewritten clause text** instead of generic advice
-- Each "suggestion" field now contains complete replacement clause language
-- Automatic fallback to OPENAI_API_KEY if AIML_API_KEY not available
-- Provides access to models from OpenAI, Anthropic, Google, and other providers
-
-### Clause Rewriting Implementation (October 19, 2025)
-- Using GPT-4o model for contract analysis (corrected from non-existent "gpt-5")
-- Removed unsupported JSON mode parameter from API calls
-- Updated all analysis prompts to explicitly request complete rewritten clause text
-- "Suggestion" field now contains actual replacement text that can be used directly in contracts
-
-### Complete Clause Rewrites (October 19, 2025)
-- **Fixed JSON parsing**: Added logic to strip markdown code blocks (` ```json...``` `) from GPT-4o responses
-  - GPT-4o often wraps JSON responses in code fences, causing parsing failures
-  - Now extracts clean JSON before parsing, preventing API errors
-- **Improved GPT-4o prompts**: Made prompts more explicit about generating COMPLETE rewritten clauses
-  - Emphasizes that "suggestion" must be full, legal-quality replacement text
-  - Clarifies this is NOT advice or summary, but actual contract language
-  - Requests complete clauses with all details, conditions, and protections
-- **Enhanced fallback system**: Created `createCompleteRewrittenClause()` function with full clause templates
-  - Generates complete, detailed rewritten clauses for all supported clause types
-  - Each clause type has a comprehensive template with proper legal structure
-  - Fallback clauses are now 200+ words with specific protections and conditions
-  - Examples include:
-    - Limitation of Liability: Complete clause with caps, exceptions for negligence/breaches, carve-outs for data breaches
-    - Termination: Full termination rights with notice periods, cure provisions, and transition assistance
-    - Intellectual Property: Detailed ownership provisions with assignments and license grants
-    - Indemnification: Comprehensive mutual indemnity with defense obligations and settlement controls
-    - Payment Terms: Complete payment terms with dispute resolution and interest provisions
-- Both GPT-4o and fallback now generate complete, usable contract clauses instead of short snippets
-
-### Document AI and OCR Improvements (October 19, 2025)
-- **Made Document AI optional**: Added ENABLE_DOCUMENT_AI environment variable flag
-  - When not set or false, application skips Document AI and uses native OCR directly
-  - Prevents errors when Document AI model is not deployed in Snowflake
-  - Provides graceful fallback with clear logging
-- **Fixed PDF processing**: Removed invalid Vision API calls for PDFs
-  - PDFs now use native PDF.js extraction exclusively
-  - Vision API (GPT-4o) reserved for images only (JPG, PNG)
-  - Eliminated 400 errors from attempting to send PDFs to vision endpoint
-- **Configured PDF.js worker**: Set `pdfjs.GlobalWorkerOptions.workerSrc`
-  - Fixed "Invalid PDF structure" errors in native PDF extraction
-  - Enabled reliable fallback OCR for all PDF documents
-- **Improved error handling**: Better logging and graceful degradation
-  - Document AI failures log concise error messages instead of full stack traces
-  - Clear indication of which processing path is being used (Document AI vs OCR)
-- **UI scrollable clause boxes**: All clause containers support full content display
-  - Original clause, suggested clause, and explanation boxes have max-height and scrolling
-  - Preserves formatting with whitespace-pre-wrap and leading-relaxed
-  - Shows complete clause text regardless of length
-
-### Track Changes Download Fix (October 19, 2025)
-- **Restructured tracked changes document generation** to eliminate brittle text matching
-  - Old approach tried to match clauses within paragraphs using `paragraph.includes()` which often failed
-  - Failed when clauses spanned multiple paragraphs or had formatting differences
-- **New two-part document structure**:
-  - Part 1: Full original contract text preserved as-is
-  - Part 2: "SUGGESTED CHANGES WITH EXPLANATIONS" section listing all top 5 changes
-- **Each change shows**:
-  - Change number and title
-  - Risk level (color-coded: red=high, orange=medium, green=low)
-  - Original clause text (with strikethrough in red)
-  - Suggested replacement clause (with yellow highlight in green)
-  - Plain-English explanation of why this matters
-- **Added defensive guards** to skip changes with missing data
-- **Result**: More reliable, clearer, and user-friendly tracked changes documents
+- **snowflake-sdk**: Connects to and operates with the Snowflake cloud data warehouse.

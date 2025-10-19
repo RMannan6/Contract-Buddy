@@ -38,7 +38,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 
-// Party information update schema
+// Party information update schema (full user-driven update)
 export const PartyInfoSchema = z.object({
   userPartyType: z.enum(["drafting", "adverse"]),
   party1Name: z.string().nullable().optional(),
@@ -47,6 +47,14 @@ export const PartyInfoSchema = z.object({
 });
 
 export type PartyInfo = z.infer<typeof PartyInfoSchema>;
+
+// Party names schema (for AI extraction only - no user party type)
+export const PartyNamesSchema = z.object({
+  party1Name: z.string().nullable().optional(),
+  party2Name: z.string().nullable().optional(),
+});
+
+export type PartyNames = z.infer<typeof PartyNamesSchema>;
 
 // Clauses table schema for the analyzed contract clauses
 export const clauses = pgTable("clauses", {

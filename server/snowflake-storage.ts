@@ -11,6 +11,7 @@ import {
   AnalysisResult,
   InsertAnalysisResult,
   PartyInfo,
+  PartyNames,
 } from '@shared/schema';
 import snowflakeDb from './snowflake-db';
 
@@ -204,6 +205,35 @@ export class SnowflakeStorage implements IStorage {
     await snowflakeDb.execute(
       `UPDATE documents SET user_party_type = ?, party1_name = ?, party2_name = ?, user_selected_party = ? WHERE id = ?`,
       [partyInfo.userPartyType, partyInfo.party1Name || null, partyInfo.party2Name || null, partyInfo.userSelectedParty || null, documentId]
+    );
+    
+    // Query back the updated document
+    const rows = await snowflakeDb.execute<any>(
+      `SELECT * FROM documents WHERE id = ? LIMIT 1`,
+      [documentId]
+    );
+    
+    if (!rows[0]) return undefined;
+    
+    const row = rows[0];
+    return {
+      id: row.ID || row.id,
+      fileName: row.FILE_NAME || row.fileName,
+      fileType: row.FILE_TYPE || row.fileType,
+      content: row.CONTENT || row.content,
+      uploadedAt: row.UPLOADED_AT || row.uploadedAt,
+      expiresAt: row.EXPIRES_AT || row.expiresAt,
+      userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
+      party1Name: row.PARTY1_NAME || row.party1Name || null,
+      party2Name: row.PARTY2_NAME || row.party2Name || null,
+      userSelectedParty: row.USER_SELECTED_PARTY || row.userSelectedParty || null,
+    } as Document;
+  }
+
+  async updateDocumentPartyNames(documentId: number, partyNames: PartyNames): Promise<Document | undefined> {
+    await snowflakeDb.execute(
+      `UPDATE documents SET party1_name = ?, party2_name = ? WHERE id = ?`,
+      [partyNames.party1Name || null, partyNames.party2Name || null, documentId]
     );
     
     // Query back the updated document
