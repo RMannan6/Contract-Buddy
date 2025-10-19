@@ -97,12 +97,24 @@ function findMatchingClauses(
       gold => gold.type === userClause.type
     );
     
+    // If we find a matching gold standard, use it
     if (matchingGoldStandards.length > 0) {
       allMatchedClauses.push({
         userClause,
         goldStandard: matchingGoldStandards[0],
         similarity: 0.8
       });
+    } else {
+      // If no exact match, use a generic gold standard or create a fallback
+      // This ensures we always have something to analyze
+      const fallbackGold = goldStandardClauses.find(g => g.type === 'other') || goldStandardClauses[0];
+      if (fallbackGold) {
+        allMatchedClauses.push({
+          userClause,
+          goldStandard: fallbackGold,
+          similarity: 0.5
+        });
+      }
     }
   }
   
@@ -120,6 +132,12 @@ function findMatchingClauses(
 // Generate analysis and recommendations
 async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<NegotiationPoint[]> {
   try {
+    // If no matched clauses, return empty but log warning
+    if (matchedClauses.length === 0) {
+      console.warn("No matched clauses found for analysis");
+      return [];
+    }
+    
     // First check if we should use the AI API or the fallback
     if ((!process.env.AIML_API_KEY && !process.env.OPENAI_API_KEY) || 
         process.env.OPENAI_API_KEY === "sk-...") {
@@ -289,22 +307,41 @@ function getIntelligentFallbackWithMatchedClauses(matchedClauses: MatchedClause[
         riskLevel: "low"
       };
     } else {
-      // For unknown types, provide generic analysis based on the actual clause content
-      const clauseTitle = type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Contract Clause';
+      // For unknown or other types, provide generic analysis based on the actual clause content
+      const clauseTitle = type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Contract Provision';
+      
+      // Create a generic but useful rewrite suggestion
+      const genericRewrite = `REVISED ${clauseTitle.toUpperCase()}: This provision should be structured to ensure: (a) both parties have balanced rights and obligations; (b) all commitments have clearly defined scope, duration, and termination conditions; (c) liability for breach is appropriately allocated based on control and fault; (d) the customer retains reasonable flexibility to address changing business needs; and (e) dispute resolution procedures are fair and efficient. The specific terms should be reviewed by legal counsel and negotiated to reflect: clear performance standards, reasonable notice periods, mutual good faith obligations, and appropriate remedies for non-performance.`;
+      
       analysis = {
         title: clauseTitle,
         originalClause: actualClauseText,
-        explanation: "This clause contains provisions that should be carefully reviewed to ensure they adequately protect your interests and maintain balance between both parties.",
-        suggestion: `REVISED ${clauseTitle.toUpperCase()}: ${actualClauseText.substring(0, 200)}... [This clause should be reviewed by legal counsel to provide specific recommended language that better protects the customer's interests while maintaining the commercial purpose of the original provision. Key improvements should include balanced obligations between parties, clear termination rights, reasonable timeframes, and limitations on liability exposure.]`,
+        explanation: "This provision should be carefully reviewed to ensure it adequately protects your interests and maintains fair balance between both parties. Consider whether the terms are reasonable, achievable, and aligned with your business objectives.",
+        suggestion: genericRewrite,
         riskLevel: "medium"
       };
     }
     
+    // Always add the analysis (we should never skip a clause)
     if (analysis) {
       analysisResults.push(analysis);
     }
   }
   
-  // Return ALL clauses found in the actual contract - analyze each one separately
+  // Ensure we always return something - if no results, create a generic analysis
+  if (analysisResults.length === 0 && matchedClauses.length > 0) {
+    console.warn("Fallback analysis produced no results, creating generic analysis");
+    matchedClauses.forEach(match => {
+      analysisResults.push({
+        title: "Contract Provision",
+        originalClause: match.userClause.content,
+        explanation: "This provision should be reviewed by legal counsel to ensure it adequately protects your interests.",
+        suggestion: "REVISED PROVISION: This clause should be rewritten to ensure balanced obligations, clear performance standards, and appropriate protections for both parties. Please consult with legal counsel for specific recommendations based on your business needs.",
+        riskLevel: "medium"
+      });
+    });
+  }
+  
+  // Return ALL analyzed clauses
   return analysisResults;
 } 
