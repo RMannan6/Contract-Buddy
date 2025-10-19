@@ -35,6 +35,31 @@ export async function initializeSnowflakeTables(): Promise<void> {
         expires_at TIMESTAMP_NTZ NOT NULL
       )
     `);
+    
+    // Add party identification columns if they don't exist
+    try {
+      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN user_party_type VARCHAR(50)`);
+    } catch (error: any) {
+      if (!error.message?.includes('already exists')) {
+        console.error('Error adding user_party_type column:', error);
+      }
+    }
+    
+    try {
+      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN drafting_party_name VARCHAR(500)`);
+    } catch (error: any) {
+      if (!error.message?.includes('already exists')) {
+        console.error('Error adding drafting_party_name column:', error);
+      }
+    }
+    
+    try {
+      await snowflakeDb.execute(`ALTER TABLE documents ADD COLUMN user_entity_name VARCHAR(500)`);
+    } catch (error: any) {
+      if (!error.message?.includes('already exists')) {
+        console.error('Error adding user_entity_name column:', error);
+      }
+    }
 
     // Create clauses table with explicit sequence
     await snowflakeDb.execute(`

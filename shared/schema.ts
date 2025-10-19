@@ -25,6 +25,9 @@ export const documents = pgTable("documents", {
   content: text("content").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   expiresAt: timestamp("expires_at").notNull(),
+  userPartyType: text("user_party_type"),
+  draftingPartyName: text("drafting_party_name"),
+  userEntityName: text("user_entity_name"),
 });
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
@@ -33,6 +36,15 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+// Party information update schema
+export const PartyInfoSchema = z.object({
+  userPartyType: z.enum(["drafting", "adverse"]),
+  draftingPartyName: z.string().optional(),
+  userEntityName: z.string().optional(),
+});
+
+export type PartyInfo = z.infer<typeof PartyInfoSchema>;
 
 // Clauses table schema for the analyzed contract clauses
 export const clauses = pgTable("clauses", {
