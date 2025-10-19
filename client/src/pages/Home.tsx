@@ -74,7 +74,12 @@ export default function Home() {
   
   const startAnalysis = async (documentId: number) => {
     try {
+      // Reset upload state immediately so user can upload another contract
       setIsUploading(false);
+      setUploadProgress(0);
+      setCurrentDocumentId(null);
+      setShowPartyDialog(false);
+      
       setIsAnalyzing(true);
       setAnalysisProgress(10);
       
@@ -125,8 +130,10 @@ export default function Home() {
       setTimeout(() => {
         // Navigate to the analysis page
         setLocation(`/analysis/${documentId}`);
-        // Reset all upload state after navigation
-        resetUploadState();
+        // Reset analysis state after navigation
+        setIsAnalyzing(false);
+        setAnalysisProgress(0);
+        setAnalysisStatus("Extracting text from document...");
       }, 500);
       
     } catch (error) {
