@@ -10,6 +10,7 @@ import {
   InsertGoldStandardClause,
   AnalysisResult,
   InsertAnalysisResult,
+  PartyInfo,
 } from '@shared/schema';
 import snowflakeDb from './snowflake-db';
 
@@ -185,6 +186,9 @@ export class SnowflakeStorage implements IStorage {
       content: row.CONTENT || row.content,
       uploadedAt: row.UPLOADED_AT || row.uploadedAt,
       expiresAt: row.EXPIRES_AT || row.expiresAt,
+      userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
+      draftingPartyName: row.DRAFTING_PARTY_NAME || row.draftingPartyName || null,
+      userEntityName: row.USER_ENTITY_NAME || row.userEntityName || null,
     } as Document;
   }
 
@@ -193,6 +197,34 @@ export class SnowflakeStorage implements IStorage {
       `UPDATE documents SET content = ? WHERE id = ?`,
       [content, id]
     );
+  }
+
+  async updateDocumentPartyInfo(documentId: number, partyInfo: PartyInfo): Promise<Document | undefined> {
+    await snowflakeDb.execute(
+      `UPDATE documents SET user_party_type = ?, drafting_party_name = ?, user_entity_name = ? WHERE id = ?`,
+      [partyInfo.userPartyType, partyInfo.draftingPartyName || null, partyInfo.userEntityName || null, documentId]
+    );
+    
+    // Query back the updated document
+    const rows = await snowflakeDb.execute<any>(
+      `SELECT * FROM documents WHERE id = ? LIMIT 1`,
+      [documentId]
+    );
+    
+    if (!rows[0]) return undefined;
+    
+    const row = rows[0];
+    return {
+      id: row.ID || row.id,
+      fileName: row.FILE_NAME || row.fileName,
+      fileType: row.FILE_TYPE || row.fileType,
+      content: row.CONTENT || row.content,
+      uploadedAt: row.UPLOADED_AT || row.uploadedAt,
+      expiresAt: row.EXPIRES_AT || row.expiresAt,
+      userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
+      draftingPartyName: row.DRAFTING_PARTY_NAME || row.draftingPartyName || null,
+      userEntityName: row.USER_ENTITY_NAME || row.userEntityName || null,
+    } as Document;
   }
 
   async getAllDocuments(): Promise<Document[]> {
@@ -205,6 +237,9 @@ export class SnowflakeStorage implements IStorage {
       content: row.CONTENT || row.content,
       uploadedAt: row.UPLOADED_AT || row.uploadedAt,
       expiresAt: row.EXPIRES_AT || row.expiresAt,
+      userPartyType: row.USER_PARTY_TYPE || row.userPartyType || null,
+      draftingPartyName: row.DRAFTING_PARTY_NAME || row.draftingPartyName || null,
+      userEntityName: row.USER_ENTITY_NAME || row.userEntityName || null,
     }));
   }
 
