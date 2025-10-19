@@ -17,7 +17,7 @@ export async function analyzeContract(
   document: Document,
   clauses: Clause[],
   goldStandardClauses: GoldStandardClause[],
-  partyInfo?: { userPartyType?: string | null; draftingPartyName?: string | null; userEntityName?: string | null }
+  partyInfo?: { userPartyType?: string | null; party1Name?: string | null; party2Name?: string | null; userSelectedParty?: string | null }
 ): Promise<{ negotiationPoints: NegotiationPoint[] }> {
   try {
     // 1. Generate embeddings for the clauses
@@ -133,7 +133,7 @@ function findMatchingClauses(
 // Generate analysis and recommendations
 async function generateAnalysis(
   matchedClauses: MatchedClause[], 
-  partyInfo?: { userPartyType?: string | null; draftingPartyName?: string | null; userEntityName?: string | null }
+  partyInfo?: { userPartyType?: string | null; party1Name?: string | null; party2Name?: string | null; userSelectedParty?: string | null }
 ): Promise<NegotiationPoint[]> {
   try {
     // If no matched clauses, return empty but log warning
@@ -202,26 +202,44 @@ async function generateAnalysis(
 // Create prompt for the LLM
 function createAnalysisPrompt(
   matchedClauses: MatchedClause[], 
-  partyInfo?: { userPartyType?: string | null; draftingPartyName?: string | null; userEntityName?: string | null }
+  partyInfo?: { userPartyType?: string | null; party1Name?: string | null; party2Name?: string | null; userSelectedParty?: string | null }
 ): string {
   // Determine the perspective based on party type
   const isDraftingParty = partyInfo?.userPartyType === 'drafting';
   const isAdverseParty = partyInfo?.userPartyType === 'adverse';
   
+  // Determine which party the user represents
+  const userPartyName = partyInfo?.userSelectedParty === 'party1' 
+    ? partyInfo?.party1Name 
+    : partyInfo?.userSelectedParty === 'party2' 
+    ? partyInfo?.party2Name 
+    : null;
+  
+  const otherPartyName = partyInfo?.userSelectedParty === 'party1'
+    ? partyInfo?.party2Name
+    : partyInfo?.userSelectedParty === 'party2'
+    ? partyInfo?.party1Name
+    : null;
+  
   // Define party-specific guidance
   let partyContext: string;
   let roleDescription: string;
   
+  // Include specific party names in context when available
+  const partyNameContext = userPartyName 
+    ? ` Your client is ${userPartyName}${otherPartyName ? `, and the other party is ${otherPartyName}` : ''}.`
+    : '';
+  
   if (isDraftingParty) {
     roleDescription = 'helping a client who drafted this contract';
-    partyContext = 'You are helping the DRAFTING PARTY (the party who wrote this contract). Focus on ensuring clarity, fairness, and mutual benefits while protecting their interests. Suggest improvements that make the contract more balanced and enforceable.';
+    partyContext = `You are helping the DRAFTING PARTY (the party who wrote this contract).${partyNameContext} Focus on ensuring clarity, fairness, and mutual benefits while protecting their interests. Suggest improvements that make the contract more balanced and enforceable.`;
   } else if (isAdverseParty) {
     roleDescription = 'helping a client who is reviewing a contract drafted by the other party';
-    partyContext = 'You are helping the ADVERSE PARTY (the party reviewing a contract drafted by someone else). Focus on risk mitigation, protective language, and negotiation strategies to better protect their interests against potentially one-sided terms.';
+    partyContext = `You are helping the ADVERSE PARTY (the party reviewing a contract drafted by someone else).${partyNameContext} Focus on risk mitigation, protective language, and negotiation strategies to better protect their interests against potentially one-sided terms.`;
   } else {
     // Neutral fallback for legacy documents or when party type is not specified
     roleDescription = 'helping a client review this contract';
-    partyContext = 'Provide balanced analysis focusing on both risk mitigation and clarity. Identify potential issues and suggest improvements that protect the client\'s interests while maintaining a fair agreement.';
+    partyContext = `Provide balanced analysis focusing on both risk mitigation and clarity.${partyNameContext} Identify potential issues and suggest improvements that protect the client\'s interests while maintaining a fair agreement.`;
   }
 
   let prompt = `You are a contract attorney ${roleDescription}. 

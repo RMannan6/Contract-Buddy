@@ -63,6 +63,7 @@ export default function Home() {
       
     } catch (error) {
       setIsUploading(false);
+      setUploadProgress(0); // Reset progress on error
       toast({
         title: "Upload Failed",
         description: error instanceof Error ? error.message : "An unknown error occurred",

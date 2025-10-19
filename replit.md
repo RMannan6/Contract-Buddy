@@ -127,6 +127,27 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 19, 2025)
 
+### Two-Party Identification Feature (October 19, 2025)
+- **Enhanced party extraction**: System now extracts BOTH parties' names from contracts using GPT-4o
+- **New database schema**: Replaced `draftingPartyName`/`userEntityName` with `party1_name`, `party2_name`, `user_selected_party`
+- **Party selection dialog**: Users can now choose which party they represent from the two extracted parties
+- **Personalized recommendations**: Analysis includes specific party names in recommendations (e.g., "Your client is ACME Corporation")
+- **Complete personalization flow**: Combined party selection + role (drafting/adverse) for fully contextualized advice
+- **API endpoints**:
+  - `POST /api/document/:documentId/extract-parties` - Extracts both party names using AI
+  - `GET /api/document/:documentId/party-info` - Retrieves party information
+  - `POST /api/document/:documentId/party-info` - Saves user's party selection
+- **Updated AI analysis**: The `analyzeContract` function now uses specific party names in prompts for better personalization
+
+### Bug Fixes and Improvements (October 19, 2025)
+- **Fixed critical UI bug**: Added Toaster component to App.tsx - error messages were not displaying to users
+- **Improved PDF processing**: 
+  - Changed PDF.js worker to use CDN for better compatibility
+  - Enhanced error handling with user-friendly messages
+  - Better validation for empty or corrupted PDFs
+- **Upload error handling**: Progress now resets on errors, preventing stuck UI states
+- **Better error messages**: All file processing errors now show clear, actionable feedback to users
+
 ### Document AI Integration
 - Integrated Snowflake Document AI model (CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY) for document parsing
 - Replaced traditional OCR/text extraction with Document AI PREDICT function using GET_PRESIGNED_URL

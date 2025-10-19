@@ -8,10 +8,8 @@ import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-// Configure PDF.js worker
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-pdfjs.GlobalWorkerOptions.workerSrc = path.join(__dirname, '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
+// Configure PDF.js worker - use CDN for better compatibility
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.0.379/legacy/build/pdf.worker.mjs';
 
 // Initialize OpenAI client with AIML API gateway (provides access to 300+ AI models)
 const openai = new OpenAI({ 
@@ -67,9 +65,23 @@ export async function fileUploadHandler(file: Express.Multer.File): Promise<File
 // Extract text from PDF using pdfjs (fallback method without AI)
 async function extractTextFromPDFNative(buffer: Buffer): Promise<string> {
   try {
+    // Validate buffer
+    if (!buffer || buffer.length === 0) {
+      throw new Error("Empty or invalid PDF buffer");
+    }
+    
     const data = new Uint8Array(buffer);
-    const loadingTask = pdfjs.getDocument({ data });
+    const loadingTask = pdfjs.getDocument({ 
+      data,
+      verbosity: 0, // Suppress PDF.js warnings
+      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.0.379/standard_fonts/'
+    });
+    
     const pdf = await loadingTask.promise;
+    
+    if (pdf.numPages === 0) {
+      throw new Error("PDF contains no pages");
+    }
     
     let fullText = "";
     
@@ -81,10 +93,25 @@ async function extractTextFromPDFNative(buffer: Buffer): Promise<string> {
       fullText += pageText + "\n\n";
     }
     
-    return fullText.trim();
-  } catch (error) {
-    console.error("Error extracting text from PDF using native parser:", error);
-    throw new Error("Failed to extract text from PDF");
+    const extractedText = fullText.trim();
+    
+    // Check if any text was extracted
+    if (!extractedText || extractedText.length < 10) {
+      throw new Error("No readable text found in PDF. The document may be image-based or scanned. Please try uploading a DOCX file or a clearer image format.");
+    }
+    
+    return extractedText;
+  } catch (error: any) {
+    console.error("PDF extraction error:", error?.message || error);
+    
+    // Provide more helpful error messages
+    if (error?.message?.includes("Invalid PDF structure")) {
+      throw new Error("Unable to read PDF file. The file may be corrupted or encrypted. Please try a different file or convert it to DOCX format.");
+    } else if (error?.message?.includes("No readable text")) {
+      throw error; // Pass through our custom error message
+    } else {
+      throw new Error(`PDF processing failed: ${error?.message || 'Unknown error'}. Please try uploading a DOCX file instead.`);
+    }
   }
 }
 
