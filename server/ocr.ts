@@ -6,8 +6,11 @@ import { promisify } from "util";
 import OpenAI from "openai";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 
-// Initialize OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI client with AIML API gateway (provides access to 300+ AI models)
+const openai = new OpenAI({ 
+  apiKey: process.env.AIML_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: process.env.AIML_API_KEY ? "https://api.aimlapi.com/v1" : undefined
+});
 
 // File processing result
 interface FileProcessingResult {
@@ -80,9 +83,10 @@ async function extractTextFromPDFNative(buffer: Buffer): Promise<string> {
 
 // Extract text from PDF using OpenAI
 async function extractTextWithOpenAI(buffer: Buffer, filename: string): Promise<string> {
-  // Skip OpenAI if API key is not valid and use native PDF extraction
-  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
-    console.log("No valid OpenAI API key, using native PDF text extraction");
+  // Skip AI API if no key is available and use native PDF extraction
+  if ((!process.env.AIML_API_KEY && !process.env.OPENAI_API_KEY) || 
+      process.env.OPENAI_API_KEY === "sk-...") {
+    console.log("No valid AI API key, using native PDF text extraction");
     return await extractTextFromPDFNative(buffer);
   }
 
@@ -148,9 +152,10 @@ async function extractTextFromDocx(buffer: Buffer): Promise<string> {
 
 // Extract text from image
 async function extractTextFromImage(buffer: Buffer): Promise<string> {
-  // For images, we need OpenAI - no fallback available
-  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
-    throw new Error("OpenAI API key required for image text extraction. Please upload a PDF or DOCX file instead.");
+  // For images, we need AI API - no fallback available
+  if ((!process.env.AIML_API_KEY && !process.env.OPENAI_API_KEY) || 
+      process.env.OPENAI_API_KEY === "sk-...") {
+    throw new Error("AI API key required for image text extraction. Please upload a PDF or DOCX file instead.");
   }
 
   try {
@@ -204,16 +209,17 @@ async function extractTextFromImage(buffer: Buffer): Promise<string> {
 // Extract clauses from text
 async function extractClauses(text: string): Promise<{ content: string, type?: string }[]> {
   try {
-    // First check if we can use the OpenAI API
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
-      console.log("No valid OpenAI API key found, using fallback clause extraction");
+    // First check if we can use the AI API
+    if ((!process.env.AIML_API_KEY && !process.env.OPENAI_API_KEY) || 
+        process.env.OPENAI_API_KEY === "sk-...") {
+      console.log("No valid AI API key found, using fallback clause extraction");
       return getIntelligentDefaultClauses(text);
     }
     
     try {
-      // Call OpenAI to identify and extract clauses
+      // Call AI API to identify and extract clauses using GPT-3.5-turbo
       const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",

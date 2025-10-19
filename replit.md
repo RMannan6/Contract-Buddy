@@ -49,7 +49,8 @@ Preferred communication style: Simple, everyday language.
 **AI Processing**:
 - **Snowflake Document AI Model** (`CONTRACTBUDDY.CONTRACTBUDDY_SCHEMA.CONTRACTBUDDY`) for document parsing using PREDICT function with GET_PRESIGNED_URL
 - Top 5 clause selection based on risk priority (limitation_of_liability, indemnification, intellectual_property, termination, payment_terms)
-- **OpenAI GPT-3.5-turbo** for clause analysis and negotiation recommendations (with fallback when quota exceeded)
+- **AIML API** gateway for accessing GPT-3.5-turbo and 300+ other AI models
+- **OpenAI GPT-3.5-turbo** (via AIML API) for clause analysis and negotiation recommendations (with intelligent fallback when quota exceeded)
 - Contract comparison against gold standard clauses using semantic similarity
 - LLM-based generation of negotiation points and recommendations
 
@@ -97,7 +98,8 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **AI Services**:
-- OpenAI API - Text analysis, embeddings generation, and contract recommendations
+- **AIML API** (aimlapi.com) - Unified gateway providing access to 300+ AI models through OpenAI-compatible API
+- OpenAI GPT-3.5-turbo (via AIML API) - Contract analysis and recommendations
 - Anthropic Claude SDK (installed but not actively used in current implementation)
 
 **Document Processing**:
@@ -147,3 +149,10 @@ Preferred communication style: Simple, everyday language.
 - Stage file paths validated with regex: `^doc_\d+\.(pdf|docx|jpg|png|bin)$`
 - Local file paths validated to be in tmp directory
 - No user-provided filenames used in SQL statements
+
+### AIML API Integration (October 19, 2025)
+- Integrated AIML API gateway for unified access to 300+ AI models
+- Configured OpenAI SDK to use AIML API base URL (https://api.aimlapi.com/v1)
+- Using GPT-3.5-turbo through AIML API for cost-effective contract analysis
+- Automatic fallback to OPENAI_API_KEY if AIML_API_KEY not available
+- Provides access to models from OpenAI, Anthropic, Google, and other providers

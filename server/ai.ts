@@ -6,8 +6,11 @@ import {
   NegotiationPoint 
 } from "@shared/schema";
 
-// Initialize OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI client with AIML API gateway (provides access to 300+ AI models)
+const openai = new OpenAI({ 
+  apiKey: process.env.AIML_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: process.env.AIML_API_KEY ? "https://api.aimlapi.com/v1" : undefined
+});
 
 // Main function to analyze the contract
 export async function analyzeContract(
@@ -117,9 +120,10 @@ function findMatchingClauses(
 // Generate analysis and recommendations
 async function generateAnalysis(matchedClauses: MatchedClause[]): Promise<NegotiationPoint[]> {
   try {
-    // First check if we should use the OpenAI API or the fallback
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-...") {
-      console.log("No valid OpenAI API key found, using intelligent fallback analysis");
+    // First check if we should use the AI API or the fallback
+    if ((!process.env.AIML_API_KEY && !process.env.OPENAI_API_KEY) || 
+        process.env.OPENAI_API_KEY === "sk-...") {
+      console.log("No valid AI API key found, using intelligent fallback analysis");
       return getIntelligentFallbackWithMatchedClauses(matchedClauses);
     }
     
